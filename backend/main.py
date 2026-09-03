@@ -25,8 +25,14 @@ app.add_middleware(
 )
 
 static_dir = os.path.join(os.path.dirname(__file__), "static")
-os.makedirs(static_dir, exist_ok=True)
-app.mount("/static", StaticFiles(directory=static_dir), name="static")
+if not os.path.exists(static_dir):
+    try:
+        os.makedirs(static_dir, exist_ok=True)
+    except Exception:
+        pass
+
+if os.path.exists(static_dir):
+    app.mount("/static", StaticFiles(directory=static_dir), name="static")
 
 # Fast In-Memory Stats Cache
 _STATS_CACHE = {"data": None, "last_updated": 0}

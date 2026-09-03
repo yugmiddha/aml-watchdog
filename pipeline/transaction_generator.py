@@ -23,14 +23,14 @@ def generate_scaled_transactions(total_records: int = 100000, laundering_ratio: 
     
     # Generate Normal Transactions using NumPy
     normal_amounts = np.clip(np.random.lognormal(mean=5.8, sigma=1.1, size=num_normal), 15.0, 45000.0).round(2)
-    sender_accs = np.random.randint(1000000000, 9999999999, size=total_records)
-    receiver_accs = np.random.randint(1000000000, 9999999999, size=total_records)
+    sender_accs = np.random.randint(100000000, 999999999, size=total_records, dtype=np.int64)
+    receiver_accs = np.random.randint(100000000, 999999999, size=total_records, dtype=np.int64)
     
     # Laundering Amounts & Typologies
-    laundering_amounts = np.random.choice([
-        np.random.uniform(8800.0, 9950.0, size=num_laundering // 2),  # Structuring
-        np.random.uniform(25000.0, 125000.0, size=num_laundering - (num_laundering // 2))  # High-volume layering
-    ]).flatten().round(2)
+    laundering_amounts = np.concatenate([
+        np.random.uniform(8800.0, 9950.0, size=num_laundering // 2),
+        np.random.uniform(25000.0, 125000.0, size=num_laundering - (num_laundering // 2))
+    ]).round(2)
     
     all_amounts = np.concatenate([normal_amounts, laundering_amounts])
     is_laundering_flags = np.array([0] * num_normal + [1] * num_laundering)

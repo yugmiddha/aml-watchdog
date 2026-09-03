@@ -3,14 +3,25 @@ import os
 import json
 from typing import List, Dict, Any, Optional
 
-DB_PATH = os.path.join(os.path.dirname(__file__), 'aml_compliance.db')
+if os.environ.get('VERCEL') or not os.access(os.path.dirname(__file__), os.W_OK):
+    DB_PATH = '/tmp/aml_compliance.db'
+else:
+    DB_PATH = os.path.join(os.path.dirname(__file__), 'aml_compliance.db')
+
 SCHEMA_PATH = os.path.join(os.path.dirname(__file__), 'schema.sql')
 
 def get_connection():
+    try:
+        os.makedirs(os.path.dirname(DB_PATH), exist_ok=True)
+    except Exception:
+        pass
     conn = sqlite3.connect(DB_PATH, timeout=30.0)
     conn.row_factory = sqlite3.Row
-    conn.execute('PRAGMA journal_mode=WAL;')
-    conn.execute('PRAGMA synchronous=NORMAL;')
+    try:
+        conn.execute('PRAGMA journal_mode=MEMORY;')
+        conn.execute('PRAGMA synchronous=NORMAL;')
+    except Exception:
+        pass
     return conn
 
 def init_db():
