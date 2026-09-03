@@ -1,0 +1,10 @@
+﻿data/
+*.csv
+*.log
+database/*.db
+database/*.db-shm
+database/*.db-wal
+database/*.db-journal
+venv/
+.venv/
+__pycache__/

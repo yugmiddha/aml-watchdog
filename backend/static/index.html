@@ -1,0 +1,1815 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AML Watchdog Enterprise - Financial Crime & SQL Query Studio</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        brand: { 50: '#ecfeff', 500: '#06b6d4', 600: '#0891b2', 900: '#164e63' },
+                        slate: { 850: '#111827', 950: '#080c14' }
+                    }
+                }
+            }
+        }
+    </script>
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script type="text/javascript" src="https://unpkg.com/vis-network/standalone/umd/vis-network.min.js"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600;700&display=swap');
+        body { font-family: 'Plus Jakarta Sans', sans-serif; transition: background-color 0.3s, color 0.3s; }
+        .font-mono { font-family: 'JetBrains Mono', monospace; }
+        
+        /* Dark Theme */
+        html.dark body { background-color: #080c14; color: #f3f4f6; }
+        html.dark .glass-panel { background: rgba(15, 23, 42, 0.88); border: 1px solid rgba(255, 255, 255, 0.07); }
+        html.dark .bg-sidebar { background-color: #0b0f19; }
+        html.dark .bg-subtle { background-color: #111827; }
+        html.dark .border-theme { border-color: #1e293b; }
+        html.dark .text-muted { color: #94a3b8; }
+        html.dark .input-theme { background-color: #0f172a; border-color: #334155; color: #f8fafc; }
+        html.dark .sql-editor { background-color: #0b0f19; color: #38bdf8; border-color: #1e293b; }
+
+        /* Luxury Cashmere Slate & Imperial Titanium Light Theme (100% Non-White) */
+        html:not(.dark) body { background-color: #dbe4ee; color: #070e1b; }
+        html:not(.dark) .glass-panel { 
+            background: #e8f0f8; 
+            border: 1px solid #b2c4d8; 
+            box-shadow: 0 10px 28px -4px rgba(15, 23, 42, 0.12), 0 2px 6px -1px rgba(15, 23, 42, 0.06); 
+        }
+        html:not(.dark) .bg-sidebar { background-color: #c9d8e8; border-color: #b0c2d7; }
+        html:not(.dark) .bg-subtle { background-color: #d3e1ef; }
+        html:not(.dark) .border-theme { border-color: #b2c4d8; }
+        html:not(.dark) .text-muted { color: #33465d; font-weight: 600; }
+        html:not(.dark) .input-theme { background-color: #d9e6f4; border-color: #9cb3cb; color: #070e1b; }
+        html:not(.dark) header { background-color: #ccdbe9; border-color: #b2c4d8; }
+        html:not(.dark) .sql-editor { background-color: #d9e6f4; color: #1e3a8a; border-color: #9cb3cb; }
+        html:not(.dark) thead { background-color: #c9d8e8 !important; color: #1e293b !important; }
+        html:not(.dark) tr:hover { background-color: rgba(2, 132, 199, 0.08) !important; }
+        html:not(.dark) select option { background-color: #d9e6f4; color: #070e1b; }
+
+        .pulse-dot { animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite; }
+        @keyframes pulse { 0%, 100% { opacity: 1; transform: scale(1); } 50% { opacity: .3; transform: scale(1.2); } }
+        @keyframes marquee { 0% { transform: translateX(100%); } 100% { transform: translateX(-100%); } }
+        .animate-marquee { display: inline-block; white-space: nowrap; animation: marquee 35s linear infinite; }
+        @media print {
+            body * { visibility: hidden; }
+            #printableSar, #printableSar * { visibility: visible; }
+            #printableSar { position: absolute; left: 0; top: 0; width: 100%; }
+        }
+    </style>
+</head>
+<body class="min-h-screen flex flex-col antialiased selection:bg-cyan-500 selection:text-white">
+
+    <!-- Top Live Ticker Bar -->
+    <div class="bg-gradient-to-r from-slate-900 via-gray-900 to-slate-900 border-b border-theme px-4 py-1.5 overflow-hidden flex items-center text-xs text-white">
+        <div class="flex items-center space-x-2 bg-rose-500/20 text-rose-400 px-2.5 py-0.5 rounded-full border border-rose-500/30 text-[10px] font-bold uppercase shrink-0">
+            <span class="w-1.5 h-1.5 rounded-full bg-rose-400 pulse-dot"></span>
+            <span>LIVE INTERCEPT TICKER</span>
+        </div>
+        <div class="overflow-hidden whitespace-nowrap ml-4 flex-1">
+            <div id="liveTickerContent" class="animate-marquee font-mono text-xs flex space-x-8">
+                <span>[ALT-7892] Structuring: $9,850.00 (ACC ...4821 &rarr; ACC ...1092) Risk: 92.5/100</span>
+                <span>•</span>
+                <span>[ALT-8910] High-Risk Corridor (Panama): $85,000.00 Risk: 96.7/100</span>
+                <span>•</span>
+                <span>[ALT-3419] Circular Pass-Through Loop: $120,000.00 Intercepted</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- Main Navigation Header -->
+    <header class="border-b border-theme sticky top-0 z-40 px-6 py-3.5 flex flex-wrap items-center justify-between gap-4 backdrop-blur">
+        <div class="flex items-center space-x-4">
+            <div class="w-11 h-11 rounded-2xl bg-gradient-to-tr from-cyan-600 via-blue-600 to-indigo-600 flex items-center justify-center shadow-lg shadow-cyan-500/25 border border-cyan-400/20">
+                <i data-lucide="shield-alert" class="w-6 h-6 text-white"></i>
+            </div>
+            <div>
+                <div class="flex items-center space-x-2.5">
+                    <h1 class="text-xl font-extrabold tracking-tight bg-gradient-to-r from-cyan-600 via-blue-600 to-indigo-600 dark:from-white dark:via-cyan-100 dark:to-cyan-400 bg-clip-text text-transparent">AML Watchdog Enterprise</h1>
+                    <span class="px-2.5 py-0.5 text-xs font-semibold rounded-full bg-emerald-500/10 text-emerald-500 border border-emerald-500/20 flex items-center space-x-1.5">
+                        <span class="w-1.5 h-1.5 rounded-full bg-emerald-500 pulse-dot"></span>
+                        <span>500,000 Records Active</span>
+                    </span>
+                </div>
+                <p class="text-xs text-muted">Deep 600-Tree XGBoost (ROC-AUC: 99.2%) &bull; Interactive SQL Studio &bull; SQLite WAL</p>
+            </div>
+        </div>
+
+        <div class="flex items-center space-x-3">
+            <div class="flex items-center bg-subtle border border-theme p-1 rounded-xl space-x-1">
+                <button onclick="setTheme('system')" id="theme-system" title="System Default Theme" class="p-1.5 rounded-lg text-xs font-semibold text-muted hover:text-cyan-500 transition-colors">
+                    <i data-lucide="laptop" class="w-4 h-4"></i>
+                </button>
+                <button onclick="setTheme('dark')" id="theme-dark" title="Dark Mode" class="p-1.5 rounded-lg text-xs font-semibold text-muted hover:text-cyan-500 transition-colors">
+                    <i data-lucide="moon" class="w-4 h-4"></i>
+                </button>
+                <button onclick="setTheme('light')" id="theme-light" title="Nordic Light Mode" class="p-1.5 rounded-lg text-xs font-semibold text-muted hover:text-cyan-500 transition-colors">
+                    <i data-lucide="sun" class="w-4 h-4"></i>
+                </button>
+            </div>
+
+            <div class="flex items-center space-x-2 bg-subtle border border-theme px-3 py-1.5 rounded-xl">
+                <span class="text-xs text-muted font-medium">Auto-Stream</span>
+                <button id="autoStreamToggle" onclick="toggleAutoStream()" class="w-9 h-5 bg-gray-600 rounded-full relative p-0.5">
+                    <div id="toggleDot" class="w-4 h-4 bg-white rounded-full transition-transform"></div>
+                </button>
+            </div>
+
+            <button onclick="switchTab('sql')" class="px-3.5 py-2 text-xs font-bold rounded-xl bg-purple-600/10 text-purple-500 border border-purple-500/20 hover:bg-purple-600 hover:text-white flex items-center space-x-1.5 transition-all">
+                <i data-lucide="terminal" class="w-4 h-4"></i>
+                <span>SQL Studio</span>
+            </button>
+
+            <button onclick="simulateStream(15)" id="streamBtn" class="px-4 py-2 text-xs font-bold rounded-xl bg-gradient-to-r from-cyan-600 to-blue-600 hover:from-cyan-500 hover:to-blue-500 text-white shadow-lg flex items-center space-x-2">
+                <i data-lucide="zap" class="w-4 h-4"></i>
+                <span>Inject Stream (15 TX)</span>
+            </button>
+
+            <a href="/api/export/transactions" download class="px-3 py-2 rounded-xl bg-subtle hover:opacity-80 text-xs font-semibold border border-theme flex items-center space-x-1.5">
+                <i data-lucide="download" class="w-4 h-4 text-cyan-500"></i>
+                <span>Export CSV</span>
+            </a>
+
+            <button onclick="refreshData()" class="p-2 rounded-xl bg-subtle border border-theme hover:text-cyan-500">
+                <i data-lucide="refresh-cw" class="w-4 h-4"></i>
+            </button>
+        </div>
+    </header>
+
+    <div class="flex-1 flex overflow-hidden">
+        <!-- Sidebar Navigation -->
+        <aside class="w-64 border-r border-theme bg-sidebar p-4 flex flex-col justify-between hidden md:flex shrink-0">
+            <div class="space-y-1.5">
+                <button onclick="switchTab('dashboard')" id="nav-dashboard" class="w-full flex items-center space-x-3 px-3.5 py-2.5 rounded-xl text-xs font-semibold bg-cyan-500/10 text-cyan-500 border border-cyan-500/20">
+                    <i data-lucide="layout-dashboard" class="w-4 h-4"></i>
+                    <span>Dashboard & KPIs</span>
+                </button>
+                <button onclick="switchTab('sql')" id="nav-sql" class="w-full flex items-center space-x-3 px-3.5 py-2.5 rounded-xl text-xs font-semibold text-muted hover:text-purple-400 hover:bg-subtle transition-colors">
+                    <i data-lucide="database" class="w-4 h-4 text-purple-400"></i>
+                    <span class="font-bold text-purple-400">SQL Query Studio</span>
+                </button>
+                <button onclick="switchTab('alerts')" id="nav-alerts" class="w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl text-xs font-semibold text-muted hover:text-cyan-500 hover:bg-subtle">
+                    <div class="flex items-center space-x-3">
+                        <i data-lucide="bell-ring" class="w-4 h-4"></i>
+                        <span>Alert Triage Queue</span>
+                    </div>
+                    <span id="badge-alert-count" class="px-2 py-0.5 text-[11px] rounded-full bg-rose-500/20 text-rose-500 font-mono font-bold">41,481</span>
+                </button>
+                <button onclick="switchTab('network')" id="nav-network" class="w-full flex items-center space-x-3 px-3.5 py-2.5 rounded-xl text-xs font-semibold text-muted hover:text-cyan-500 hover:bg-subtle">
+                    <i data-lucide="network" class="w-4 h-4"></i>
+                    <span>Flow Network Graph</span>
+                </button>
+                <button onclick="switchTab('entity')" id="nav-entity" class="w-full flex items-center space-x-3 px-3.5 py-2.5 rounded-xl text-xs font-semibold text-muted hover:text-cyan-500 hover:bg-subtle">
+                    <i data-lucide="user-check" class="w-4 h-4"></i>
+                    <span>Account 360° Profile</span>
+                </button>
+                <button onclick="switchTab('transactions')" id="nav-transactions" class="w-full flex items-center space-x-3 px-3.5 py-2.5 rounded-xl text-xs font-semibold text-muted hover:text-cyan-500 hover:bg-subtle">
+                    <i data-lucide="table" class="w-4 h-4"></i>
+                    <span>Transaction Explorer</span>
+                </button>
+                <button onclick="switchTab('tester')" id="nav-tester" class="w-full flex items-center space-x-3 px-3.5 py-2.5 rounded-xl text-xs font-semibold text-muted hover:text-cyan-500 hover:bg-subtle">
+                    <i data-lucide="flask-conical" class="w-4 h-4"></i>
+                    <span>Attack Scenario Sandbox</span>
+                </button>
+                <button onclick="switchTab('model')" id="nav-model" class="w-full flex items-center space-x-3 px-3.5 py-2.5 rounded-xl text-xs font-semibold text-muted hover:text-cyan-500 hover:bg-subtle">
+                    <i data-lucide="cpu" class="w-4 h-4"></i>
+                    <span>ML Model Insights</span>
+                </button>
+            </div>
+
+            <div class="p-3.5 rounded-2xl bg-subtle border border-theme text-[11px] space-y-2">
+                <div class="flex items-center justify-between font-bold">
+                    <span>Database Records</span>
+                    <span class="text-cyan-500 font-mono">500,000 TX</span>
+                </div>
+                <div class="flex items-center justify-between text-muted">
+                    <span>Active Storage</span>
+                    <span class="font-mono">SQLite 3 (WAL)</span>
+                </div>
+                <div class="flex items-center justify-between text-muted">
+                    <span>Validation ROC-AUC</span>
+                    <span class="font-mono text-emerald-500 font-bold">99.20%</span>
+                </div>
+            </div>
+        </aside>
+
+        <!-- Main Content Area -->
+        <main class="flex-1 overflow-y-auto p-6 space-y-6">
+
+            <!-- 1. DASHBOARD TAB -->
+            <section id="tab-dashboard" class="space-y-6">
+                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-5">
+                    <div class="glass-panel p-5 rounded-2xl relative overflow-hidden shadow-lg">
+                        <div class="flex items-center justify-between">
+                            <span class="text-xs font-bold text-muted uppercase tracking-wider">Monitored Volume</span>
+                            <div class="p-2.5 rounded-xl bg-blue-500/10 text-blue-500 border border-blue-500/20">
+                                <i data-lucide="layers" class="w-4 h-4"></i>
+                            </div>
+                        </div>
+                        <div class="mt-3">
+                            <h3 id="stat-total-tx" class="text-3xl font-extrabold font-mono tracking-tight text-cyan-400">500,000</h3>
+                            <p class="text-xs text-muted mt-1">500,000 Real Dataset Records</p>
+                        </div>
+                        <div class="absolute bottom-0 left-0 h-1 bg-gradient-to-r from-blue-500 to-cyan-500 w-full"></div>
+                    </div>
+
+                    <div class="glass-panel p-5 rounded-2xl relative overflow-hidden shadow-lg">
+                        <div class="flex items-center justify-between">
+                            <span class="text-xs font-bold text-muted uppercase tracking-wider">Total Fund Flow</span>
+                            <div class="p-2.5 rounded-xl bg-emerald-500/10 text-emerald-500 border border-emerald-500/20">
+                                <i data-lucide="dollar-sign" class="w-4 h-4"></i>
+                            </div>
+                        </div>
+                        <div class="mt-3">
+                            <h3 id="stat-total-vol" class="text-3xl font-extrabold font-mono tracking-tight text-emerald-500">$4.35B</h3>
+                            <p class="text-xs text-muted mt-1">Gross transactional volume</p>
+                        </div>
+                        <div class="absolute bottom-0 left-0 h-1 bg-gradient-to-r from-emerald-500 to-teal-500 w-full"></div>
+                    </div>
+
+                    <div class="glass-panel p-5 rounded-2xl relative overflow-hidden shadow-lg">
+                        <div class="flex items-center justify-between">
+                            <span class="text-xs font-bold text-muted uppercase tracking-wider">Suspicious Interceptions</span>
+                            <div class="p-2.5 rounded-xl bg-rose-500/10 text-rose-500 border border-rose-500/20">
+                                <i data-lucide="alert-triangle" class="w-4 h-4"></i>
+                            </div>
+                        </div>
+                        <div class="mt-3">
+                            <h3 id="stat-flagged-tx" class="text-3xl font-extrabold font-mono tracking-tight text-rose-500">41,481</h3>
+                            <p class="text-xs text-muted mt-1" id="stat-flagged-vol">$446.8M intercepted</p>
+                        </div>
+                        <div class="absolute bottom-0 left-0 h-1 bg-gradient-to-r from-rose-500 to-orange-500 w-full"></div>
+                    </div>
+
+                    <div class="glass-panel p-5 rounded-2xl relative overflow-hidden shadow-lg">
+                        <div class="flex items-center justify-between">
+                            <span class="text-xs font-bold text-muted uppercase tracking-wider">Model Accuracy & ROC-AUC</span>
+                            <div class="p-2.5 rounded-xl bg-purple-500/10 text-purple-500 border border-purple-500/20">
+                                <i data-lucide="binary" class="w-4 h-4"></i>
+                            </div>
+                        </div>
+                        <div class="mt-3">
+                            <div class="flex items-baseline space-x-2">
+                                <h3 class="text-3xl font-extrabold font-mono tracking-tight text-purple-500">99.95%</h3>
+                                <span class="text-xs font-bold px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-500 border border-emerald-500/20">Accuracy</span>
+                            </div>
+                            <p class="text-xs text-muted mt-1">99.20% ROC-AUC &bull; 91.43% Precision</p>
+                        </div>
+                        <div class="absolute bottom-0 left-0 h-1 bg-gradient-to-r from-purple-500 to-pink-500 w-full"></div>
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                    <div class="lg:col-span-2 glass-panel p-5 rounded-2xl shadow-xl">
+                        <div class="flex items-center justify-between mb-4">
+                            <div>
+                                <h3 class="font-bold text-sm">Laundering Typologies Breakdown</h3>
+                                <p class="text-xs text-muted">Structuring, Smurfing, Cycles, Fan-In / Fan-Out, Layering</p>
+                            </div>
+                            <span class="text-xs text-cyan-500 font-mono font-semibold">FATF Vectors</span>
+                        </div>
+                        <div class="h-64 relative">
+                            <canvas id="typologyChart"></canvas>
+                        </div>
+                    </div>
+
+                    <div class="glass-panel p-5 rounded-2xl shadow-xl">
+                        <div class="flex items-center justify-between mb-4">
+                            <div>
+                                <h3 class="font-bold text-sm">Risk Severity Distribution</h3>
+                                <p class="text-xs text-muted">Transaction Risk Tiers</p>
+                            </div>
+                            <span class="text-xs text-emerald-500 font-mono font-semibold">Real-Time</span>
+                        </div>
+                        <div class="h-64 relative flex items-center justify-center">
+                            <canvas id="tierChart"></canvas>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="glass-panel p-5 rounded-2xl space-y-4 shadow-xl">
+                    <div class="flex items-center justify-between">
+                        <div class="flex items-center space-x-2">
+                            <i data-lucide="shield-alert" class="w-4 h-4 text-rose-500"></i>
+                            <h3 class="font-bold text-sm">High-Priority Alert Stream</h3>
+                        </div>
+                        <button onclick="switchTab('alerts')" class="text-xs text-cyan-500 hover:opacity-80 font-bold flex items-center space-x-1">
+                            <span>Open Triage Queue</span>
+                            <i data-lucide="arrow-right" class="w-3.5 h-3.5"></i>
+                        </button>
+                    </div>
+
+                    <div class="overflow-x-auto">
+                        <table class="w-full text-left text-xs">
+                            <thead class="bg-subtle text-muted uppercase tracking-wider font-semibold border-b border-theme">
+                                <tr>
+                                    <th class="p-3">Alert ID</th>
+                                    <th class="p-3">Typology / Pattern</th>
+                                    <th class="p-3">Amount</th>
+                                    <th class="p-3">Sender &bull; Receiver</th>
+                                    <th class="p-3">Risk Score</th>
+                                    <th class="p-3">Status</th>
+                                    <th class="p-3 text-right">Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody id="recentAlertsTable" class="divide-y border-theme font-mono">
+                                <tr><td colspan="7" class="text-center p-4 text-muted">Loading alerts...</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </section>
+
+            <!-- 2. INTERACTIVE SQL QUERY STUDIO TAB -->
+            <section id="tab-sql" class="space-y-6 hidden">
+                <div class="grid grid-cols-1 lg:grid-cols-4 gap-6">
+                    <!-- Schema & Quick Presets Sidebar -->
+                    <div class="glass-panel p-5 rounded-2xl space-y-5 shadow-xl flex flex-col justify-between">
+                        <div class="space-y-4">
+                            <div class="flex items-center space-x-2 pb-3 border-b border-theme">
+                                <i data-lucide="database" class="w-5 h-5 text-purple-400"></i>
+                                <div>
+                                    <h3 class="font-bold text-sm text-purple-400">SQLite Schema</h3>
+                                    <p class="text-[11px] text-muted">500,000 Active Records</p>
+                                </div>
+                            </div>
+
+                            <div class="space-y-2">
+                                <span class="text-xs font-bold text-muted uppercase tracking-wider">Quick Query Presets</span>
+                                <div class="space-y-1.5">
+                                    <button onclick="loadSQLPreset('structuring')" class="w-full text-left p-2 rounded-xl bg-subtle hover:bg-purple-500/10 text-xs text-muted hover:text-purple-400 border border-theme transition-colors block">
+                                        ⚡ Top Structuring Cases ($8.5k–$10k)
+                                    </button>
+                                    <button onclick="loadSQLPreset('jurisdictions')" class="w-full text-left p-2 rounded-xl bg-subtle hover:bg-purple-500/10 text-xs text-muted hover:text-purple-400 border border-theme transition-colors block">
+                                        ⚡ High-Risk Corridor Grouping
+                                    </button>
+                                    <button onclick="loadSQLPreset('critical_alerts')" class="w-full text-left p-2 rounded-xl bg-subtle hover:bg-purple-500/10 text-xs text-muted hover:text-purple-400 border border-theme transition-colors block">
+                                        ⚡ Unassigned Critical Alerts
+                                    </button>
+                                    <button onclick="loadSQLPreset('top_accounts')" class="w-full text-left p-2 rounded-xl bg-subtle hover:bg-purple-500/10 text-xs text-muted hover:text-purple-400 border border-theme transition-colors block">
+                                        ⚡ Top 20 Senders by Total Volume
+                                    </button>
+                                    <button onclick="loadSQLPreset('schemas')" class="w-full text-left p-2 rounded-xl bg-subtle hover:bg-purple-500/10 text-xs text-muted hover:text-purple-400 border border-theme transition-colors block">
+                                        ⚡ Inspect All Table Schemas
+                                    </button>
+                                </div>
+                            </div>
+
+                            <div class="space-y-2 pt-2">
+                                <span class="text-xs font-bold text-muted uppercase tracking-wider">Database Tables</span>
+                                <div id="sqlSchemaList" class="space-y-2 text-xs font-mono text-muted">
+                                    <div class="p-2 rounded-lg bg-subtle border border-theme">Loading tables...</div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="p-3 rounded-xl bg-subtle border border-theme text-[11px] text-muted space-y-1 font-mono">
+                            <div><span class="font-bold text-purple-400">Engine:</span> SQLite 3 (WAL)</div>
+                            <div><span class="font-bold">Shortcut:</span> <kbd class="px-1.5 py-0.5 rounded bg-gray-700 text-white text-[10px]">Ctrl</kbd> + <kbd class="px-1.5 py-0.5 rounded bg-gray-700 text-white text-[10px]">Enter</kbd></div>
+                        </div>
+                    </div>
+
+                    <!-- Main SQL Query Studio -->
+                    <div class="lg:col-span-3 space-y-5">
+                        <div class="glass-panel p-5 rounded-2xl space-y-4 shadow-xl">
+                            <div class="flex flex-wrap items-center justify-between gap-2">
+                                <div class="flex items-center space-x-2">
+                                    <i data-lucide="terminal" class="w-5 h-5 text-cyan-400"></i>
+                                    <h3 class="font-bold text-base">SQL Query Studio & Compliance Console</h3>
+                                </div>
+                                <div class="flex items-center space-x-2">
+                                    <button onclick="clearSQLEditor()" class="px-3 py-1.5 rounded-xl bg-subtle text-xs text-muted hover:opacity-80 border border-theme">Clear</button>
+                                    <button onclick="exportSQLResultsCSV()" id="exportSqlBtn" class="px-3 py-1.5 rounded-xl bg-subtle text-xs text-muted hover:text-cyan-400 border border-theme flex items-center space-x-1 hidden">
+                                        <i data-lucide="download" class="w-3.5 h-3.5"></i>
+                                        <span>Export Result CSV</span>
+                                    </button>
+                                    <button onclick="runSQLQuery()" id="runSqlBtn" class="px-4 py-1.5 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white font-bold text-xs rounded-xl shadow-lg flex items-center space-x-1.5 transition-all">
+                                        <i data-lucide="play" class="w-4 h-4"></i>
+                                        <span>Run Query</span>
+                                    </button>
+                                </div>
+                            </div>
+
+                            <!-- SQL Editor Area -->
+                            <div class="relative">
+                                <textarea id="sqlInput" rows="6" onkeydown="handleSQLKeyDown(event)" placeholder="Write custom SQL query here... e.g. SELECT * FROM transactions WHERE risk_score >= 80 LIMIT 50;" class="w-full sql-editor border rounded-xl p-4 font-mono text-xs focus:outline-none focus:ring-2 focus:ring-purple-500/40 custom-scrollbar shadow-inner leading-relaxed">SELECT tx_id, date, sender_account, receiver_account, amount, sender_bank_location, receiver_bank_location, payment_type, risk_score, risk_tier 
+FROM transactions 
+WHERE risk_score >= 80.0 OR is_laundering = 1 
+ORDER BY risk_score DESC 
+LIMIT 50;</textarea>
+                            </div>
+                        </div>
+
+                        <!-- Results View -->
+                        <div class="glass-panel p-5 rounded-2xl space-y-4 shadow-xl">
+                            <div class="flex items-center justify-between">
+                                <div class="flex items-center space-x-2">
+                                    <h4 class="font-bold text-sm">Query Execution Output</h4>
+                                    <span id="sqlExecutionBadge" class="text-[11px] px-2.5 py-0.5 rounded-full bg-subtle border border-theme text-muted font-mono">Awaiting execution</span>
+                                </div>
+                                <span id="sqlRowCount" class="text-xs text-muted font-mono">0 rows</span>
+                            </div>
+
+                            <div id="sqlErrorBox" class="p-3.5 rounded-xl bg-rose-500/10 border border-rose-500/30 text-rose-500 text-xs font-mono hidden"></div>
+
+                            <div class="overflow-x-auto max-h-[420px] custom-scrollbar rounded-xl border border-theme">
+                                <table id="sqlResultsTable" class="w-full text-left text-xs font-mono">
+                                    <thead class="bg-subtle text-muted uppercase tracking-wider font-semibold border-b border-theme sticky top-0">
+                                        <tr><th class="p-3">Run a query above to view results</th></tr>
+                                    </thead>
+                                    <tbody id="sqlResultsBody" class="divide-y border-theme">
+                                        <tr><td class="p-4 text-center text-muted">Ready to execute SQL commands against 500,000 transactions.</td></tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- 3. ALERTS TAB -->
+            <section id="tab-alerts" class="space-y-6 hidden">
+                <div class="glass-panel p-5 rounded-2xl space-y-4 shadow-xl">
+                    <div class="flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
+                        <div>
+                            <h2 class="text-lg font-bold">Compliance Alert Triage Queue</h2>
+                            <p class="text-xs text-muted">Investigate cases, assign analysts, update triage status, and generate SAR reports</p>
+                        </div>
+                        <div class="flex flex-wrap items-center gap-3">
+                            <select id="filterSeverity" onchange="loadAlerts()" class="input-theme border text-xs rounded-xl px-3 py-2 focus:outline-none">
+                                <option value="ALL">All Severities</option>
+                                <option value="CRITICAL">Critical Severity</option>
+                                <option value="HIGH">High Severity</option>
+                                <option value="MEDIUM">Medium Severity</option>
+                            </select>
+                            <select id="filterStatus" onchange="loadAlerts()" class="input-theme border text-xs rounded-xl px-3 py-2 focus:outline-none">
+                                <option value="ALL">All Statuses</option>
+                                <option value="NEW">New</option>
+                                <option value="UNDER_INVESTIGATION">Under Investigation</option>
+                                <option value="SAR_FILED">SAR Filed</option>
+                                <option value="CLOSED">Closed</option>
+                            </select>
+                            <button onclick="loadAlerts()" class="px-3.5 py-2 bg-subtle text-xs font-semibold rounded-xl border border-theme hover:opacity-80">Refresh</button>
+                        </div>
+                    </div>
+
+                    <div class="overflow-x-auto">
+                        <table class="w-full text-left text-xs">
+                            <thead class="bg-subtle text-muted uppercase tracking-wider font-semibold border-b border-theme">
+                                <tr>
+                                    <th class="p-3">Alert ID</th>
+                                    <th class="p-3">Severity</th>
+                                    <th class="p-3">Amount</th>
+                                    <th class="p-3">Parties</th>
+                                    <th class="p-3">Risk Score / Violations</th>
+                                    <th class="p-3">Status</th>
+                                    <th class="p-3">Investigator</th>
+                                    <th class="p-3 text-right">Triage Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody id="fullAlertsTable" class="divide-y border-theme font-mono">
+                                <tr><td colspan="8" class="text-center p-6 text-muted">Loading alerts queue...</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </section>
+
+            <!-- 4. NETWORK GRAPH TAB -->
+            <section id="tab-network" class="space-y-6 hidden">
+                <div class="glass-panel p-5 rounded-2xl space-y-4 shadow-xl">
+                    <div class="flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
+                        <div>
+                            <h2 class="text-lg font-bold">Interactive Money Flow Network Graph</h2>
+                            <p class="text-xs text-muted">Trace transaction pathways, multi-hop smurfing hubs, and circular funds</p>
+                        </div>
+                        <div class="flex items-center space-x-2">
+                            <input type="text" id="targetAccountInput" placeholder="Account ID (e.g. 8724731955)" class="input-theme border text-xs rounded-xl px-4 py-2 font-mono focus:outline-none w-64" />
+                            <button onclick="renderNetworkForAccount()" class="px-4 py-2 bg-gradient-to-r from-cyan-600 to-blue-600 hover:from-cyan-500 hover:to-blue-500 text-xs font-bold rounded-xl text-white shadow-md">Trace Flow</button>
+                        </div>
+                    </div>
+                    <div class="w-full h-[520px] bg-subtle rounded-2xl border border-theme relative overflow-hidden">
+                        <div id="visNetworkContainer" class="w-full h-full"></div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- 5. ACCOUNT 360° DOSSIER & ENTITY INSPECTION TAB -->
+            <section id="tab-entity" class="space-y-6 hidden">
+                <!-- Entity Directory / Inspection Queue -->
+                <div class="glass-panel p-6 rounded-2xl space-y-4 shadow-xl">
+                    <div class="flex flex-col lg:flex-row items-start lg:items-center justify-between gap-4">
+                        <div>
+                            <div class="flex items-center space-x-2">
+                                <i data-lucide="users" class="w-5 h-5 text-cyan-500"></i>
+                                <h2 class="text-lg font-bold">Entity KYC Directory & Surveillance Inspection List</h2>
+                            </div>
+                            <p class="text-xs text-muted">Complete audit directory of all 46,442 registered entities across the financial surveillance network</p>
+                        </div>
+                        <div class="flex flex-wrap items-center gap-2.5">
+                            <input type="text" id="entitySearchInput" oninput="resetEntityPageAndLoad()" placeholder="Search Account ID..." class="input-theme border text-xs rounded-xl px-3 py-2 font-mono focus:outline-none w-52" />
+                            <select id="entityTierFilter" onchange="resetEntityPageAndLoad()" class="input-theme border text-xs rounded-xl px-3 py-2 font-medium">
+                                <option value="ALL">All Risk Tiers</option>
+                                <option value="CRITICAL">Critical Risk (75+)</option>
+                                <option value="HIGH">High Risk (50-74)</option>
+                                <option value="MEDIUM">Medium Risk (25-49)</option>
+                                <option value="LOW">Low Risk (&lt;25)</option>
+                            </select>
+                            <select id="entityLocFilter" onchange="resetEntityPageAndLoad()" class="input-theme border text-xs rounded-xl px-3 py-2 font-medium">
+                                <option value="ALL">All Jurisdictions</option>
+                                <option value="US">United States (US)</option>
+                                <option value="UK">United Kingdom (UK)</option>
+                                <option value="Panama">Panama</option>
+                                <option value="Cayman Islands">Cayman Islands</option>
+                                <option value="Cyprus">Cyprus</option>
+                                <option value="UAE">UAE</option>
+                                <option value="Germany">Germany</option>
+                            </select>
+                            <select id="entitySortBy" onchange="resetEntityPageAndLoad()" class="input-theme border text-xs rounded-xl px-3 py-2 font-medium">
+                                <option value="risk_desc">Sort: Highest Risk</option>
+                                <option value="risk_asc">Sort: Lowest Risk</option>
+                                <option value="outflow_desc">Sort: Highest Outflow</option>
+                                <option value="inflow_desc">Sort: Highest Inflow</option>
+                                <option value="alerts_desc">Sort: Most Alerts</option>
+                                <option value="id_asc">Sort: Account ID</option>
+                            </select>
+                            <select id="entityPageSize" onchange="resetEntityPageAndLoad()" class="input-theme border text-xs rounded-xl px-3 py-2 font-bold text-cyan-400">
+                                <option value="50">50 / page</option>
+                                <option value="100">100 / page</option>
+                                <option value="250">250 / page</option>
+                                <option value="500">500 / page</option>
+                                <option value="1000">1,000 / page</option>
+                                <option value="2500">2,500 / page</option>
+                            </select>
+                            <button onclick="exportEntitiesCSV()" title="Export Filtered Entities to CSV" class="px-3 py-2 bg-subtle hover:bg-slate-700 text-xs font-semibold rounded-xl border border-theme flex items-center space-x-1 transition-all">
+                                <i data-lucide="download" class="w-3.5 h-3.5 text-cyan-400"></i>
+                                <span>Export CSV</span>
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Pagination Status & Controls Bar Top -->
+                    <div class="flex flex-wrap items-center justify-between gap-3 text-xs bg-subtle p-3 rounded-xl border border-theme font-mono">
+                        <div class="flex items-center space-x-2">
+                            <span id="entityDirectoryCount" class="font-bold text-cyan-400">Loading entities...</span>
+                        </div>
+                        <div class="flex items-center space-x-1.5">
+                            <button onclick="changeEntityPage('first')" id="btnEntityFirst" class="px-2.5 py-1 rounded-lg bg-sidebar border border-theme text-muted hover:text-white disabled:opacity-40 disabled:cursor-not-allowed">« First</button>
+                            <button onclick="changeEntityPage('prev')" id="btnEntityPrev" class="px-2.5 py-1 rounded-lg bg-sidebar border border-theme text-muted hover:text-white disabled:opacity-40 disabled:cursor-not-allowed">‹ Prev</button>
+                            <span class="px-3 py-1 bg-sidebar rounded-lg border border-theme font-bold text-cyan-400" id="entityPageIndicator">Page 1 of 1</span>
+                            <button onclick="changeEntityPage('next')" id="btnEntityNext" class="px-2.5 py-1 rounded-lg bg-sidebar border border-theme text-muted hover:text-white disabled:opacity-40 disabled:cursor-not-allowed">Next ›</button>
+                            <button onclick="changeEntityPage('last')" id="btnEntityLast" class="px-2.5 py-1 rounded-lg bg-sidebar border border-theme text-muted hover:text-white disabled:opacity-40 disabled:cursor-not-allowed">Last »</button>
+                        </div>
+                    </div>
+
+                    <div class="overflow-x-auto max-h-[440px] custom-scrollbar rounded-xl border border-theme">
+                        <table class="w-full text-left text-xs font-mono">
+                            <thead class="bg-subtle text-muted uppercase text-[10px] tracking-wider font-bold sticky top-0 border-b border-theme z-10">
+                                <tr>
+                                    <th class="p-3">Account ID</th>
+                                    <th class="p-3">Jurisdiction</th>
+                                    <th class="p-3">Risk Rating</th>
+                                    <th class="p-3">Risk Tier</th>
+                                    <th class="p-3">Flagged Alerts</th>
+                                    <th class="p-3">Total Inflow</th>
+                                    <th class="p-3">Total Outflow</th>
+                                    <th class="p-3">Status</th>
+                                    <th class="p-3 text-right">KYC Action</th>
+                                </tr>
+                            </thead>
+                            <tbody id="entitiesDirectoryBody" class="divide-y border-theme">
+                                <tr><td colspan="9" class="p-4 text-center text-muted">Loading entity list...</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <!-- Bottom Pagination Summary -->
+                    <div class="flex items-center justify-between text-xs text-muted font-mono pt-1">
+                        <span>Tip: Click any entity row to immediately populate its full 360° behavioral dossier.</span>
+                        <span id="entityShowingRange">Showing 1-50 of 46,442</span>
+                    </div>
+                </div>
+
+                <!-- Deep 360° Risk Dossier for Selected Entity -->
+                <div class="glass-panel p-6 rounded-2xl space-y-6 shadow-xl">
+                    <div class="flex flex-col md:flex-row items-start md:items-center justify-between gap-4 border-b border-theme pb-4">
+                        <div>
+                            <div class="flex items-center space-x-2">
+                                <i data-lucide="user-check" class="w-5 h-5 text-purple-400"></i>
+                                <h3 class="text-base font-bold">Selected Entity Risk Dossier & KYC Profile</h3>
+                            </div>
+                            <p class="text-xs text-muted" id="dossierSubtitle">Inspecting Account Dossier: <span id="activeDossierAccount" class="font-mono font-bold text-cyan-400">8724731955</span></p>
+                        </div>
+                        <div class="flex items-center space-x-2">
+                            <input type="text" id="dossierAccountInput" value="8724731955" placeholder="Enter Account ID" class="input-theme border text-xs rounded-xl px-4 py-2 font-mono focus:outline-none w-56" />
+                            <button onclick="loadAccountProfile()" class="px-4 py-2 bg-gradient-to-r from-cyan-600 to-blue-600 hover:from-cyan-500 hover:to-blue-500 text-xs font-bold rounded-xl text-white shadow-md">Inspect Entity</button>
+                        </div>
+                    </div>
+
+                    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
+                        <div class="p-4 rounded-xl bg-subtle border border-theme">
+                            <span class="text-xs text-muted block font-semibold">Entity Risk Rating</span>
+                            <div class="mt-1 flex items-baseline space-x-2">
+                                <span id="dosRisk" class="text-2xl font-bold font-mono text-rose-500">--</span>
+                                <span class="text-xs text-muted">/100</span>
+                            </div>
+                        </div>
+                        <div class="p-4 rounded-xl bg-subtle border border-theme">
+                            <span class="text-xs text-muted block font-semibold">Risk Tier</span>
+                            <span id="dosTier" class="text-xl font-bold font-mono text-amber-500 block mt-1">--</span>
+                        </div>
+                        <div class="p-4 rounded-xl bg-subtle border border-theme">
+                            <span class="text-xs text-muted block font-semibold">Total Inflow</span>
+                            <span id="dosInflow" class="text-xl font-bold font-mono text-emerald-500 block mt-1">--</span>
+                        </div>
+                        <div class="p-4 rounded-xl bg-subtle border border-theme">
+                            <span class="text-xs text-muted block font-semibold">Total Outflow</span>
+                            <span id="dosOutflow" class="text-xl font-bold font-mono text-cyan-500 block mt-1">--</span>
+                        </div>
+                        <div class="p-4 rounded-xl bg-subtle border border-theme">
+                            <span class="text-xs text-muted block font-semibold">Flagged Alerts</span>
+                            <span id="dosAlertsCount" class="text-2xl font-bold font-mono text-purple-400 block mt-1">--</span>
+                        </div>
+                    </div>
+
+                    <div class="space-y-2">
+                        <h4 class="text-xs font-bold text-muted uppercase tracking-wider">Recent Transaction Ledger & Counterparty Activity</h4>
+                        <div class="overflow-x-auto rounded-xl border border-theme">
+                            <table class="w-full text-left text-xs font-mono">
+                                <thead class="bg-subtle text-muted uppercase text-[10px] tracking-wider font-bold border-b border-theme">
+                                    <tr>
+                                        <th class="p-2.5">TX ID</th>
+                                        <th class="p-2.5">Timestamp</th>
+                                        <th class="p-2.5">Counterparties</th>
+                                        <th class="p-2.5">Amount</th>
+                                        <th class="p-2.5">Channel</th>
+                                        <th class="p-2.5 text-right">Risk Score</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="dosTxTable" class="divide-y border-theme">
+                                    <tr><td colspan="6" class="text-center p-4 text-muted">Search an account above.</td></tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- 6. TRANSACTION EXPLORER TAB -->
+            <section id="tab-transactions" class="space-y-6 hidden">
+                <div class="glass-panel p-5 rounded-2xl space-y-4 shadow-xl">
+                    <div class="flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
+                        <div>
+                            <h2 class="text-lg font-bold">Full Transaction Explorer</h2>
+                            <p class="text-xs text-muted">Search and audit monitored transactions across the entire surveillance pipeline</p>
+                        </div>
+                        <div class="flex items-center space-x-3">
+                            <input type="text" id="txSearchInput" onkeyup="searchTransactions()" placeholder="Search Account or TX ID..." class="input-theme border text-xs rounded-xl px-4 py-2 font-mono focus:outline-none w-64" />
+                            <select id="txTierFilter" onchange="searchTransactions()" class="input-theme border text-xs rounded-xl px-3 py-2">
+                                <option value="ALL">All Tiers</option>
+                                <option value="CRITICAL">Critical Tier</option>
+                                <option value="HIGH">High Tier</option>
+                                <option value="MEDIUM">Medium Tier</option>
+                                <option value="LOW">Low Tier</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="overflow-x-auto">
+                        <table class="w-full text-left text-xs font-mono">
+                            <thead class="bg-subtle text-muted uppercase tracking-wider font-semibold border-b border-theme">
+                                <tr>
+                                    <th class="p-3">TX ID</th>
+                                    <th class="p-3">Timestamp</th>
+                                    <th class="p-3">Sender &bull; Receiver</th>
+                                    <th class="p-3">Amount</th>
+                                    <th class="p-3">Jurisdictions</th>
+                                    <th class="p-3">Method</th>
+                                    <th class="p-3">Risk Tier</th>
+                                    <th class="p-3 text-right">Score</th>
+                                </tr>
+                            </thead>
+                            <tbody id="fullTxTable" class="divide-y border-theme">
+                                <tr><td colspan="8" class="text-center p-6 text-muted">Loading transactions...</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </section>
+
+            <!-- 7. ATTACK SANDBOX TESTER TAB -->
+            <section id="tab-tester" class="space-y-6 hidden">
+                <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                    <div class="glass-panel p-6 rounded-2xl space-y-4 shadow-xl">
+                        <div>
+                            <h2 class="text-lg font-bold">AML Scenario Attack Simulator</h2>
+                            <p class="text-xs text-muted">Score any custom transaction or load predefined FATF money laundering typologies</p>
+                        </div>
+
+                        <div class="space-y-1.5">
+                            <span class="text-xs text-muted font-semibold block">Load Preset Scenario:</span>
+                            <div class="flex flex-wrap gap-2">
+                                <button onclick="loadScenario('structuring')" class="px-2.5 py-1 rounded-lg bg-cyan-500/10 hover:bg-cyan-600 text-cyan-500 hover:text-white border border-cyan-500/20 text-xs transition-colors">⚡ Structuring ($9,850)</button>
+                                <button onclick="loadScenario('panama')" class="px-2.5 py-1 rounded-lg bg-rose-500/10 hover:bg-rose-600 text-rose-500 hover:text-white border border-rose-500/20 text-xs transition-colors">⚡ Tax Haven ($85,000 Panama)</button>
+                                <button onclick="loadScenario('pass_through')" class="px-2.5 py-1 rounded-lg bg-amber-500/10 hover:bg-amber-600 text-amber-500 hover:text-white border border-amber-500/20 text-xs transition-colors">⚡ Rapid Velocity ($55,000)</button>
+                                <button onclick="loadScenario('normal')" class="px-2.5 py-1 rounded-lg bg-emerald-500/10 hover:bg-emerald-600 text-emerald-500 hover:text-white border border-emerald-500/20 text-xs transition-colors">✓ Normal Retail ($350)</button>
+                            </div>
+                        </div>
+
+                        <form id="txTestForm" onsubmit="testTransaction(event)" class="space-y-4 pt-2">
+                            <div class="grid grid-cols-2 gap-4">
+                                <div>
+                                    <label class="block text-xs font-medium text-muted mb-1">Amount ($)</label>
+                                    <input type="number" step="0.01" id="t_amount" value="9850.00" class="w-full input-theme border rounded-xl px-3.5 py-2 text-sm font-mono focus:outline-none" required />
+                                </div>
+                                <div>
+                                    <label class="block text-xs font-medium text-muted mb-1">Payment Method</label>
+                                    <select id="t_payment_type" class="w-full input-theme border rounded-xl px-3.5 py-2 text-sm focus:outline-none">
+                                        <option value="Cash Deposit">Cash Deposit</option>
+                                        <option value="Wire Transfer">Wire Transfer</option>
+                                        <option value="Cross-border">Cross-border</option>
+                                        <option value="ACH">ACH</option>
+                                        <option value="Credit Card">Credit Card</option>
+                                    </select>
+                                </div>
+                            </div>
+                            <div class="grid grid-cols-2 gap-4">
+                                <div>
+                                    <label class="block text-xs font-medium text-muted mb-1">Sender Account</label>
+                                    <input type="text" id="t_sender" value="4829104821" class="w-full input-theme border rounded-xl px-3.5 py-2 text-sm font-mono focus:outline-none" required />
+                                </div>
+                                <div>
+                                    <label class="block text-xs font-medium text-muted mb-1">Receiver Account</label>
+                                    <input type="text" id="t_receiver" value="9928174822" class="w-full input-theme border rounded-xl px-3.5 py-2 text-sm font-mono focus:outline-none" required />
+                                </div>
+                            </div>
+                            <div class="grid grid-cols-2 gap-4">
+                                <div>
+                                    <label class="block text-xs font-medium text-muted mb-1">Sender Location</label>
+                                    <select id="t_sender_loc" class="w-full input-theme border rounded-xl px-3.5 py-2 text-sm focus:outline-none">
+                                        <option value="US">United States (US)</option>
+                                        <option value="UK">United Kingdom (UK)</option>
+                                        <option value="Panama">Panama (High Risk)</option>
+                                        <option value="Cayman Islands">Cayman Islands (High Risk)</option>
+                                        <option value="UAE">UAE</option>
+                                    </select>
+                                </div>
+                                <div>
+                                    <label class="block text-xs font-medium text-muted mb-1">Receiver Location</label>
+                                    <select id="t_receiver_loc" class="w-full input-theme border rounded-xl px-3.5 py-2 text-sm focus:outline-none">
+                                        <option value="Panama">Panama (High Risk)</option>
+                                        <option value="US">United States (US)</option>
+                                        <option value="Cayman Islands">Cayman Islands (High Risk)</option>
+                                        <option value="Cyprus">Cyprus (High Risk)</option>
+                                        <option value="UAE">UAE</option>
+                                    </select>
+                                </div>
+                            </div>
+                            <button type="submit" class="w-full py-3 bg-gradient-to-r from-cyan-600 to-blue-600 hover:from-cyan-500 hover:to-blue-500 text-white font-bold text-sm rounded-xl shadow-lg shadow-cyan-500/20 transition-all flex items-center justify-center space-x-2">
+                                <i data-lucide="play" class="w-4 h-4"></i>
+                                <span>Evaluate Transaction Risk</span>
+                            </button>
+                        </form>
+                    </div>
+
+                    <div id="testResultPanel" class="glass-panel p-6 rounded-2xl flex flex-col justify-between space-y-4 shadow-xl">
+                        <div>
+                            <h3 class="font-bold text-sm mb-1">Evaluation & Risk Decomposition</h3>
+                            <p class="text-xs text-muted">Rules Engine + XGBoost Probability Fusion</p>
+                        </div>
+                        <div class="text-center space-y-2 py-4">
+                            <div id="resScoreCircle" class="w-32 h-32 mx-auto rounded-full border-4 border-rose-500/80 flex items-center justify-center bg-rose-500/10 shadow-lg shadow-rose-500/20">
+                                <span id="resScore" class="text-4xl font-extrabold font-mono text-rose-500">--</span>
+                            </div>
+                            <span id="resTierBadge" class="inline-block px-3 py-1 text-xs font-bold rounded-full bg-rose-500/20 text-rose-500">AWAITING TEST</span>
+                        </div>
+                        <div class="p-3.5 rounded-xl bg-subtle border border-theme text-xs">
+                            <span class="text-muted font-semibold block mb-1">Explainable AI Findings:</span>
+                            <ul id="resReasons" class="list-disc list-inside space-y-1 font-mono">
+                                <li>Run test to view rule flags and model probabilities.</li>
+                            </ul>
+                        </div>
+                        <div class="grid grid-cols-2 gap-3 text-xs font-mono">
+                            <div class="p-3 rounded-xl bg-subtle border border-theme">
+                                <span class="text-muted block font-sans">Rule Score</span>
+                                <span id="resRuleScore" class="text-base font-bold text-cyan-500">--</span>
+                            </div>
+                            <div class="p-3 rounded-xl bg-subtle border border-theme">
+                                <span class="text-muted block font-sans">ML Confidence</span>
+                                <span id="resMLScore" class="text-base font-bold text-purple-500">--</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- 8. ML MODEL TAB -->
+            <section id="tab-model" class="space-y-6 hidden">
+                <!-- Top Key Metrics Cards -->
+                <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                    <div class="glass-panel p-5 rounded-2xl border border-theme space-y-2 shadow-lg">
+                        <span class="text-xs font-bold text-muted uppercase tracking-wider">Overall Model Accuracy</span>
+                        <div class="flex items-baseline space-x-2">
+                            <h4 class="text-3xl font-extrabold font-mono text-emerald-400">99.95%</h4>
+                            <span class="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">Test Set</span>
+                        </div>
+                        <p class="text-[11px] text-muted font-mono">99,947 / 100,000 Correct Predictions</p>
+                    </div>
+
+                    <div class="glass-panel p-5 rounded-2xl border border-theme space-y-2 shadow-lg">
+                        <span class="text-xs font-bold text-muted uppercase tracking-wider">ROC-AUC Test Score</span>
+                        <div class="flex items-baseline space-x-2">
+                            <h4 class="text-3xl font-extrabold font-mono text-cyan-400">99.20%</h4>
+                            <span class="text-[10px] font-bold px-2 py-0.5 rounded-full bg-cyan-500/10 text-cyan-400 border border-cyan-500/20">Discrimination</span>
+                        </div>
+                        <p class="text-[11px] text-muted font-mono">Area Under ROC Curve</p>
+                    </div>
+
+                    <div class="glass-panel p-5 rounded-2xl border border-theme space-y-2 shadow-lg">
+                        <span class="text-xs font-bold text-muted uppercase tracking-wider">Precision Rate</span>
+                        <div class="flex items-baseline space-x-2">
+                            <h4 class="text-3xl font-extrabold font-mono text-purple-400">91.43%</h4>
+                            <span class="text-[10px] font-bold px-2 py-0.5 rounded-full bg-purple-500/10 text-purple-400 border border-purple-500/20">Ultra-Low FP</span>
+                        </div>
+                        <p class="text-[11px] text-muted font-mono">True Positives / Total Flags</p>
+                    </div>
+
+                    <div class="glass-panel p-5 rounded-2xl border border-theme space-y-2 shadow-lg">
+                        <span class="text-xs font-bold text-muted uppercase tracking-wider">F1-Score / PR-AUC</span>
+                        <div class="flex items-baseline space-x-2">
+                            <h4 class="text-3xl font-extrabold font-mono text-amber-400">70.72%</h4>
+                            <span class="text-[10px] font-bold px-2 py-0.5 rounded-full bg-amber-500/10 text-amber-400 border border-amber-500/20">Harmonic Mean</span>
+                        </div>
+                        <p class="text-[11px] text-muted font-mono">PR-AUC: 69.30% &bull; Recall: 57.66%</p>
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                    <div class="glass-panel p-5 rounded-2xl space-y-4 shadow-xl">
+                        <div class="flex items-center justify-between pb-2 border-b border-theme">
+                            <h3 class="font-bold text-sm">Model Architecture & Specs</h3>
+                            <span class="text-xs text-cyan-400 font-mono font-bold">XGBoost v2.0</span>
+                        </div>
+                        <div class="space-y-2.5 text-xs font-mono">
+                            <div class="flex justify-between p-2.5 rounded-lg bg-subtle border border-theme">
+                                <span class="text-muted">Algorithm</span>
+                                <span class="text-cyan-400 font-semibold">Deep 600-Tree Gradient Booster</span>
+                            </div>
+                            <div class="flex justify-between p-2.5 rounded-lg bg-subtle border border-theme">
+                                <span class="text-muted">Dataset Scope</span>
+                                <span>500,000 Transactions</span>
+                            </div>
+                            <div class="flex justify-between p-2.5 rounded-lg bg-subtle border border-theme">
+                                <span class="text-muted">Train / Test Split</span>
+                                <span>400,000 / 100,000 (80/20)</span>
+                            </div>
+                            <div class="flex justify-between p-2.5 rounded-lg bg-subtle border border-theme">
+                                <span class="text-muted">Accuracy Percentage</span>
+                                <span class="text-emerald-400 font-bold">99.95%</span>
+                            </div>
+                            <div class="flex justify-between p-2.5 rounded-lg bg-subtle border border-theme">
+                                <span class="text-muted">Optimal Decision Cutoff</span>
+                                <span class="text-purple-400 font-semibold">0.9844</span>
+                            </div>
+                            <div class="flex justify-between p-2.5 rounded-lg bg-subtle border border-theme">
+                                <span class="text-muted">Feature Dimension Space</span>
+                                <span>28 Engineered Signals</span>
+                            </div>
+                        </div>
+
+                        <!-- Confusion Matrix Card -->
+                        <div class="p-3 rounded-xl bg-subtle border border-theme space-y-2">
+                            <span class="text-[11px] font-bold text-muted uppercase tracking-wider block">Confusion Matrix (100,000 Test Records)</span>
+                            <div class="grid grid-cols-2 gap-2 text-xs font-mono text-center">
+                                <div class="p-2 rounded-lg bg-emerald-500/10 border border-emerald-500/20">
+                                    <span class="text-[10px] text-muted block">True Negatives</span>
+                                    <span class="font-bold text-emerald-400">99,883</span>
+                                </div>
+                                <div class="p-2 rounded-lg bg-rose-500/10 border border-rose-500/20">
+                                    <span class="text-[10px] text-muted block">False Positives</span>
+                                    <span class="font-bold text-rose-400">6</span>
+                                </div>
+                                <div class="p-2 rounded-lg bg-amber-500/10 border border-amber-500/20">
+                                    <span class="text-[10px] text-muted block">False Negatives</span>
+                                    <span class="font-bold text-amber-400">47</span>
+                                </div>
+                                <div class="p-2 rounded-lg bg-cyan-500/10 border border-cyan-500/20">
+                                    <span class="text-[10px] text-muted block">True Positives</span>
+                                    <span class="font-bold text-cyan-400">64</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="lg:col-span-2 glass-panel p-5 rounded-2xl space-y-4 shadow-xl flex flex-col justify-between">
+                        <div class="flex items-center justify-between">
+                            <div>
+                                <h3 class="font-bold text-sm">Top Feature Importances (Gini Index)</h3>
+                                <p class="text-xs text-muted">Feature contribution weights driving laundering probability</p>
+                            </div>
+                            <span class="text-xs font-bold text-purple-400 font-mono">28 Features</span>
+                        </div>
+                        <div class="h-80 relative">
+                            <canvas id="featureChart"></canvas>
+                        </div>
+                    </div>
+                </div>
+            </section>
+        </main>
+    </div>
+
+    <!-- SAR Modal with Printable Layout -->
+    <div id="sarModal" class="fixed inset-0 z-50 bg-black/75 backdrop-blur-sm flex items-center justify-center p-4 hidden">
+        <div id="printableSar" class="glass-panel border border-theme w-full max-w-2xl rounded-2xl shadow-2xl p-6 space-y-4">
+            <div class="flex items-center justify-between border-b border-theme pb-3">
+                <div class="flex items-center space-x-2">
+                    <i data-lucide="file-badge" class="w-5 h-5 text-cyan-500"></i>
+                    <h3 class="font-bold text-base">FinCEN Form 111 - Suspicious Activity Report (SAR)</h3>
+                </div>
+                <button onclick="closeSarModal()" class="text-muted hover:opacity-80">&times;</button>
+            </div>
+
+            <div class="space-y-3 text-xs">
+                <div class="grid grid-cols-2 gap-3">
+                    <div>
+                        <label class="text-muted font-semibold block mb-1">Subject Account ID</label>
+                        <input type="text" id="sar_primary" readonly class="w-full input-theme border rounded-lg p-2 font-mono" />
+                    </div>
+                    <div>
+                        <label class="text-muted font-semibold block mb-1">Suspicious Amount Intercepted</label>
+                        <input type="text" id="sar_amount" readonly class="w-full input-theme border rounded-lg p-2 font-mono text-emerald-500 font-bold" />
+                    </div>
+                </div>
+                <div>
+                    <label class="text-muted font-semibold block mb-1">FATF Laundering Typology</label>
+                    <input type="text" id="sar_typology" readonly class="w-full input-theme border rounded-lg p-2 font-mono text-rose-500 font-bold" />
+                </div>
+                <div>
+                    <label class="text-muted font-semibold block mb-1">Formal Narrative Statement & Audit Evidence</label>
+                    <textarea id="sar_narrative" rows="4" class="w-full input-theme border rounded-lg p-2.5 font-mono"></textarea>
+                </div>
+            </div>
+
+            <input type="hidden" id="sar_alert_id" />
+            <input type="hidden" id="sar_risk_score" />
+
+            <div class="flex items-center justify-between pt-3 border-t border-theme">
+                <button onclick="window.print()" class="px-3 py-2 rounded-xl bg-subtle text-xs font-semibold flex items-center space-x-1.5 border border-theme">
+                    <i data-lucide="printer" class="w-4 h-4"></i>
+                    <span>Print Form</span>
+                </button>
+                <div class="space-x-2">
+                    <button onclick="closeSarModal()" class="px-4 py-2 rounded-xl bg-subtle text-xs">Cancel</button>
+                    <button onclick="submitSarFiling()" class="px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-xs font-bold text-white shadow-lg">Submit & File SAR</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+
+    <script>
+var currentTheme = 'system';
+        var typologyChartInstance = null;
+        var tierChartInstance = null;
+        var featureChartInstance = null;
+        var visNetworkInstance = null;
+        var autoStreamInterval = null;
+        var lastSQLResultData = null;
+
+        function initTheme() {
+            var saved = localStorage.getItem('aml_theme') || 'system';
+            setTheme(saved);
+            window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', () => {
+                if (currentTheme === 'system') applyTheme('system');
+            });
+        }
+
+        function setTheme(theme) {
+            currentTheme = theme;
+            localStorage.setItem('aml_theme', theme);
+            ['system', 'dark', 'light'].forEach(t => {
+                var btn = document.getElementById('theme-' + t);
+                if (btn) {
+                    if (t === theme) {
+                        btn.classList.add('bg-cyan-500', 'text-white');
+                        btn.classList.remove('text-muted');
+                    } else {
+                        btn.classList.remove('bg-cyan-500', 'text-white');
+                        btn.classList.add('text-muted');
+                    }
+                }
+            });
+            applyTheme(theme);
+        }
+
+        function applyTheme(theme) {
+            var isDark = theme === 'dark' || (theme === 'system' && window.matchMedia('(prefers-color-scheme: dark)').matches);
+            if (isDark) {
+                document.documentElement.classList.add('dark');
+            } else {
+                document.documentElement.classList.remove('dark');
+            }
+            if (typologyChartInstance) refreshData();
+        }
+
+        document.addEventListener('DOMContentLoaded', () => {
+            initTheme();
+            if (typeof lucide !== 'undefined' && lucide.createIcons) { try { lucide.createIcons(); } catch(e){} }
+            refreshData();
+            loadModelMetrics();
+            searchTransactions();
+            
+        });
+
+        function switchTab(tabId) {
+            ['dashboard', 'sql', 'alerts', 'network', 'entity', 'transactions', 'tester', 'model'].forEach(t => {
+                var el = document.getElementById('tab-' + t);
+                var nav = document.getElementById('nav-' + t);
+                if (el) el.classList.add('hidden');
+                if (nav) {
+                    nav.classList.remove('bg-cyan-500/10', 'text-cyan-500', 'border', 'border-cyan-500/20');
+                    nav.classList.add('text-muted');
+                }
+            });
+
+            var activeEl = document.getElementById('tab-' + tabId);
+            var activeNav = document.getElementById('nav-' + tabId);
+            if (activeEl) activeEl.classList.remove('hidden');
+            if (activeNav) {
+                activeNav.classList.add('bg-cyan-500/10', 'text-cyan-500', 'border', 'border-cyan-500/20');
+                activeNav.classList.remove('text-muted');
+            }
+
+            if (tabId === 'alerts') loadAlerts();
+            if (tabId === 'network') renderNetworkForAccount();
+            if (tabId === 'entity') { loadEntitiesList(); loadAccountProfile(); }
+            if (tabId === 'transactions') searchTransactions();
+            if (tabId === 'sql') loadSQLSchema();
+            if (tabId === 'model') loadModelMetrics();
+            if (typeof lucide !== 'undefined' && lucide.createIcons) { try { lucide.createIcons(); } catch(e){} }
+        }
+
+        async function refreshData() {
+            try {
+                var res = await fetch('/api/stats');
+                var stats = await res.json();
+
+                document.getElementById('stat-total-tx').innerText = Number(stats.total_transactions).toLocaleString();
+                document.getElementById('stat-total-vol').innerText = '$' + Number(stats.total_volume).toLocaleString('en-US', { minimumFractionDigits: 2 });
+                document.getElementById('stat-flagged-tx').innerText = Number(stats.flagged_transactions).toLocaleString();
+                document.getElementById('stat-flagged-vol').innerText = '$' + Number(stats.flagged_volume).toLocaleString('en-US', { minimumFractionDigits: 2 }) + ' intercepted';
+                
+                var totalAlerts = Object.values(stats.alerts_by_status || {}).reduce((a, b) => a + b, 0);
+                document.getElementById('badge-alert-count').innerText = totalAlerts.toLocaleString();
+
+                renderCharts(stats);
+                loadRecentAlerts();
+            } catch (err) {
+                console.error('Error loading stats:', err);
+            }
+        }
+
+        function renderCharts(stats) {
+            var isDark = document.documentElement.classList.contains('dark');
+            var textColor = isDark ? '#9ca3af' : '#1e293b';
+            var gridColor = isDark ? '#1f2937' : '#b2c4d8';
+            var barColor = isDark ? '#06b6d4' : '#0284c7';
+
+            var ctxTyp = document.getElementById('typologyChart').getContext('2d');
+            var typData = stats.laundering_breakdown || [];
+            
+            if (typologyChartInstance) typologyChartInstance.destroy();
+            typologyChartInstance = new Chart(ctxTyp, {
+                type: 'bar',
+                data: {
+                    labels: typData.map(d => d.type.replace(/_/g, ' ')),
+                    datasets: [{
+                        label: 'Interceptions Count',
+                        data: typData.map(d => d.count),
+                        backgroundColor: barColor,
+                        borderRadius: 6
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: { legend: { display: false } },
+                    scales: {
+                        x: { grid: { display: false }, ticks: { color: textColor, font: { size: 10, weight: 'bold' } } },
+                        y: { grid: { color: gridColor }, ticks: { color: textColor, font: { size: 10, weight: 'bold' } } }
+                    }
+                }
+            });
+
+            var ctxTier = document.getElementById('tierChart').getContext('2d');
+            var tiers = stats.tier_distribution || {};
+            
+            if (tierChartInstance) tierChartInstance.destroy();
+            tierChartInstance = new Chart(ctxTier, {
+                type: 'doughnut',
+                data: {
+                    labels: Object.keys(tiers),
+                    datasets: [{
+                        data: Object.values(tiers),
+                        backgroundColor: ['#10b981', '#3b82f6', '#f59e0b', '#ef4444'],
+                        borderWidth: 0
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: { legend: { position: 'bottom', labels: { color: textColor, font: { size: 10 } } } },
+                    cutout: '70%'
+                }
+            });
+        }
+
+        async function loadRecentAlerts() {
+            try {
+                var res = await fetch('/api/alerts?limit=6');
+                var data = await res.json();
+                var tbody = document.getElementById('recentAlertsTable');
+                tbody.innerHTML = '';
+
+                (data.alerts || []).forEach(a => {
+                    var row = document.createElement('tr');
+                    row.className = 'hover:bg-cyan-500/5 transition-colors';
+                    var sevColor = a.severity === 'CRITICAL' ? 'text-rose-500 bg-rose-500/10 border-rose-500/20' : (a.severity === 'HIGH' ? 'text-amber-500 bg-amber-500/10 border-amber-500/20' : 'text-blue-500 bg-blue-500/10 border-blue-500/20');
+                    
+                    row.innerHTML = `
+                        <td class="p-3 font-semibold">${a.alert_id}</td>
+                        <td class="p-3 text-cyan-500 font-semibold">${a.alert_type}</td>
+                        <td class="p-3 text-emerald-500 font-bold">$${Number(a.amount).toLocaleString()}</td>
+                        <td class="p-3 text-muted">${a.sender_account.slice(-4)} &rarr; ${a.receiver_account.slice(-4)}</td>
+                        <td class="p-3"><span class="px-2 py-0.5 rounded-full border text-[10px] font-bold ${sevColor}">${a.risk_score}/100</span></td>
+                        <td class="p-3">${a.status}</td>
+                        <td class="p-3 text-right">
+                            <button onclick="openSarModal('${a.alert_id}', '${a.sender_account}', '${a.receiver_account}', ${a.amount}, '${a.alert_type}', ${a.risk_score})" class="px-2.5 py-1 rounded-lg bg-cyan-500/10 hover:bg-cyan-500 text-cyan-500 hover:text-white border border-cyan-500/20 text-[11px] transition-colors">
+                                File SAR
+                            </button>
+                        </td>
+                    `;
+                    tbody.appendChild(row);
+                });
+            } catch (err) {
+                console.error(err);
+            }
+        }
+
+        async function loadAlerts() {
+            var sev = document.getElementById('filterSeverity').value;
+            var stat = document.getElementById('filterStatus').value;
+            var res = await fetch(`/api/alerts?severity=${sev}&status=${stat}&limit=50`);
+            var data = await res.json();
+            var tbody = document.getElementById('fullAlertsTable');
+            tbody.innerHTML = '';
+
+            (data.alerts || []).forEach(a => {
+                var tr = document.createElement('tr');
+                tr.className = 'hover:bg-cyan-500/5 transition-colors';
+                var sevColor = a.severity === 'CRITICAL' ? 'text-rose-500 bg-rose-500/10 border-rose-500/20' : (a.severity === 'HIGH' ? 'text-amber-500 bg-amber-500/10 border-amber-500/20' : 'text-blue-500 bg-blue-500/10 border-blue-500/20');
+                
+                tr.innerHTML = `
+                    <td class="p-3 font-semibold">${a.alert_id}</td>
+                    <td class="p-3"><span class="px-2 py-0.5 rounded-full border text-[10px] font-bold ${sevColor}">${a.severity}</span></td>
+                    <td class="p-3 text-emerald-500 font-bold">$${Number(a.amount).toLocaleString()}</td>
+                    <td class="p-3">${a.sender_account} &rarr; ${a.receiver_account}</td>
+                    <td class="p-3">
+                        <span class="text-cyan-500 font-bold">${a.risk_score}</span>
+                        <p class="text-[10px] text-muted truncate max-w-xs">${a.rule_reason || ''}</p>
+                    </td>
+                    <td class="p-3"><span class="px-2 py-0.5 rounded bg-subtle text-[10px]">${a.status}</span></td>
+                    <td class="p-3 text-muted">${a.assigned_to}</td>
+                    <td class="p-3 text-right space-x-1.5">
+                        <button onclick="triageStatus('${a.alert_id}', 'UNDER_INVESTIGATION')" class="px-2 py-1 rounded bg-subtle hover:opacity-80 text-[11px] border border-theme">Investigate</button>
+                        <button onclick="openSarModal('${a.alert_id}', '${a.sender_account}', '${a.receiver_account}', ${a.amount}, '${a.alert_type}', ${a.risk_score})" class="px-2 py-1 rounded bg-rose-500/10 hover:bg-rose-500 text-rose-500 hover:text-white border border-rose-500/20 text-[11px]">SAR</button>
+                    </td>
+                `;
+                tbody.appendChild(tr);
+            });
+        }
+
+        async function triageStatus(alertId, newStatus) {
+            await fetch(`/api/alerts/${alertId}/triage`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ status: newStatus, assigned_to: 'AML Compliance Officer', investigator_notes: 'Under active review.' })
+            });
+            loadAlerts();
+            refreshData();
+        }
+
+        async function simulateStream(batchSize) {
+            var btn = document.getElementById('streamBtn');
+            btn.innerHTML = '<span>Streaming...</span>';
+            btn.classList.add('opacity-75');
+
+            try {
+                var res = await fetch(`/api/simulate-stream?batch_size=${batchSize}`, { method: 'POST' });
+                await refreshData();
+                loadAlerts();
+                searchTransactions();
+            } finally {
+                btn.innerHTML = '<i data-lucide="zap" class="w-4 h-4"></i><span>Inject Stream (15 TX)</span>';
+                btn.classList.remove('opacity-75');
+                if (typeof lucide !== 'undefined' && lucide.createIcons) { try { lucide.createIcons(); } catch(e){} }
+            }
+        }
+
+        function toggleAutoStream() {
+            var toggle = document.getElementById('autoStreamToggle');
+            var dot = document.getElementById('toggleDot');
+            
+            if (autoStreamInterval) {
+                clearInterval(autoStreamInterval);
+                autoStreamInterval = null;
+                toggle.classList.remove('bg-cyan-600');
+                toggle.classList.add('bg-gray-600');
+                dot.style.transform = 'translateX(0px)';
+            } else {
+                autoStreamInterval = setInterval(() => {
+                    simulateStream(6);
+                }, 4000);
+                toggle.classList.remove('bg-gray-600');
+                toggle.classList.add('bg-cyan-600');
+                dot.style.transform = 'translateX(16px)';
+            }
+        }
+
+        async function renderNetworkForAccount() {
+            var acc = document.getElementById('targetAccountInput').value.trim() || '8724731955';
+
+            try {
+                var res = await fetch(`/api/network-graph/${acc}`);
+                var data = await res.json();
+                
+                var container = document.getElementById('visNetworkContainer');
+                var isDark = document.documentElement.classList.contains('dark');
+                var labelColor = isDark ? '#f3f4f6' : '#1e293b';
+
+                var graphData = {
+                    nodes: new vis.DataSet(data.nodes.map(n => ({ ...n, font: { color: labelColor, size: 12, face: 'JetBrains Mono' } }))),
+                    edges: new vis.DataSet(data.edges)
+                };
+                
+                var options = {
+                    nodes: { shape: 'dot', size: 20, borderWidth: 2 },
+                    edges: { width: 2, font: { color: '#9ca3af', size: 10, align: 'middle' }, smooth: { type: 'continuous' } },
+                    physics: { stabilization: true, barnesHut: { gravitationalConstant: -3000, springLength: 120 } }
+                };
+
+                visNetworkInstance = new vis.Network(container, graphData, options);
+            } catch (err) {
+                console.error(err);
+            }
+        }
+
+        var currentEntityPage = 1;
+        var entityTotalPages = 1;
+        var entityTotalRecords = 0;
+
+        function resetEntityPageAndLoad() {
+            currentEntityPage = 1;
+            loadEntitiesList();
+        }
+
+        function changeEntityPage(action) {
+            if (action === 'first') {
+                currentEntityPage = 1;
+            } else if (action === 'prev') {
+                if (currentEntityPage > 1) currentEntityPage--;
+            } else if (action === 'next') {
+                if (currentEntityPage < entityTotalPages) currentEntityPage++;
+            } else if (action === 'last') {
+                currentEntityPage = entityTotalPages;
+            }
+            loadEntitiesList();
+        }
+
+        async function loadEntitiesList() {
+            var search = document.getElementById('entitySearchInput')?.value.trim() || '';
+            var tier = document.getElementById('entityTierFilter')?.value || 'ALL';
+            var loc = document.getElementById('entityLocFilter')?.value || 'ALL';
+            var sortBy = document.getElementById('entitySortBy')?.value || 'risk_desc';
+            var pageSize = parseInt(document.getElementById('entityPageSize')?.value || '50', 10);
+            var offset = (currentEntityPage - 1) * pageSize;
+
+            try {
+                var res = await fetch(`/api/accounts/list?search=${encodeURIComponent(search)}&risk_tier=${tier}&location=${loc}&sort_by=${sortBy}&limit=${pageSize}&offset=${offset}`);
+                if (!res.ok) return;
+                var data = await res.json();
+                var tbody = document.getElementById('entitiesDirectoryBody');
+                var countEl = document.getElementById('entityDirectoryCount');
+                var pageIndicator = document.getElementById('entityPageIndicator');
+                var rangeEl = document.getElementById('entityShowingRange');
+                var btnFirst = document.getElementById('btnEntityFirst');
+                var btnPrev = document.getElementById('btnEntityPrev');
+                var btnNext = document.getElementById('btnEntityNext');
+                var btnLast = document.getElementById('btnEntityLast');
+
+                if (!tbody) return;
+                tbody.innerHTML = '';
+
+                entityTotalRecords = data.total || 0;
+                entityTotalPages = Math.max(1, Math.ceil(entityTotalRecords / pageSize));
+                if (currentEntityPage > entityTotalPages) currentEntityPage = entityTotalPages;
+
+                var startNum = entityTotalRecords > 0 ? offset + 1 : 0;
+                var endNum = Math.min(offset + data.count, entityTotalRecords);
+
+                if (countEl) countEl.innerText = `${Number(entityTotalRecords).toLocaleString()} Entities Registered`;
+                if (pageIndicator) pageIndicator.innerText = `Page ${currentEntityPage} of ${Number(entityTotalPages).toLocaleString()}`;
+                if (rangeEl) rangeEl.innerText = `Showing records ${startNum.toLocaleString()} - ${endNum.toLocaleString()} of ${Number(entityTotalRecords).toLocaleString()}`;
+
+                if (btnFirst) btnFirst.disabled = currentEntityPage <= 1;
+                if (btnPrev) btnPrev.disabled = currentEntityPage <= 1;
+                if (btnNext) btnNext.disabled = currentEntityPage >= entityTotalPages;
+                if (btnLast) btnLast.disabled = currentEntityPage >= entityTotalPages;
+
+                if (!data.entities || data.entities.length === 0) {
+                    tbody.innerHTML = '<tr><td colspan="9" class="p-6 text-center text-muted">No entities found matching the current search / filter criteria.</td></tr>';
+                    return;
+                }
+
+                data.entities.forEach(e => {
+                    var tr = document.createElement('tr');
+                    tr.className = 'hover:bg-cyan-500/10 cursor-pointer transition-colors';
+                    tr.onclick = function() { loadAccountProfile(e.account_id); };
+
+                    var sevColor = e.risk_tier === 'CRITICAL' ? 'text-rose-500 bg-rose-500/10 border-rose-500/20' : (e.risk_tier === 'HIGH' ? 'text-amber-500 bg-amber-500/10 border-amber-500/20' : (e.risk_tier === 'MEDIUM' ? 'text-blue-500 bg-blue-500/10 border-blue-500/20' : 'text-emerald-500 bg-emerald-500/10 border-emerald-500/20'));
+
+                    tr.innerHTML = `
+                        <td class="p-3 font-semibold text-cyan-400 font-mono">${e.account_id}</td>
+                        <td class="p-3 text-muted font-sans font-medium">${e.bank_location}</td>
+                        <td class="p-3"><span class="px-2 py-0.5 rounded-full border text-[10px] font-bold ${sevColor}">${e.risk_rating}/100</span></td>
+                        <td class="p-3"><span class="px-2 py-0.5 rounded bg-subtle text-[10px] font-semibold">${e.risk_tier}</span></td>
+                        <td class="p-3"><span class="font-bold ${e.flagged_alerts > 0 ? 'text-rose-500 font-mono' : 'text-muted'}">${e.flagged_alerts}</span></td>
+                        <td class="p-3 text-emerald-500 font-bold">$${Number(e.total_inflow).toLocaleString()}</td>
+                        <td class="p-3 text-cyan-500 font-bold">$${Number(e.total_outflow).toLocaleString()}</td>
+                        <td class="p-3"><span class="px-2 py-0.5 rounded text-[10px] font-bold ${e.account_status === 'ACTIVE' ? 'bg-emerald-500/10 text-emerald-400' : 'bg-rose-500/10 text-rose-400'}">${e.account_status}</span></td>
+                        <td class="p-3 text-right">
+                            <button onclick="event.stopPropagation(); loadAccountProfile('${e.account_id}')" class="px-2.5 py-1 bg-cyan-500/10 hover:bg-cyan-500 text-cyan-400 hover:text-white rounded-lg text-[11px] font-bold border border-cyan-500/20 transition-all">
+                                Inspect 🔍
+                            </button>
+                        </td>
+                    `;
+                    tbody.appendChild(tr);
+                });
+            } catch (err) {
+                console.error('Entities list error:', err);
+            }
+        }
+
+        function exportEntitiesCSV() {
+            var search = document.getElementById('entitySearchInput')?.value.trim() || '';
+            var tier = document.getElementById('entityTierFilter')?.value || 'ALL';
+            var loc = document.getElementById('entityLocFilter')?.value || 'ALL';
+            window.location.href = `/api/export/entities?search=${encodeURIComponent(search)}&risk_tier=${tier}&location=${loc}`;
+        }
+
+        async function loadAccountProfile(targetAcc) {
+            var acc = targetAcc || document.getElementById('dossierAccountInput')?.value.trim() || '8724731955';
+            var input = document.getElementById('dossierAccountInput');
+            if (input) input.value = acc;
+            var activeBadge = document.getElementById('activeDossierAccount');
+            if (activeBadge) activeBadge.innerText = acc;
+
+            try {
+                var res = await fetch(`/api/account/${acc}/profile`);
+                var data = await res.json();
+
+                document.getElementById('dosRisk').innerText = data.risk_rating;
+                document.getElementById('dosTier').innerText = data.risk_tier + ' RISK';
+                document.getElementById('dosInflow').innerText = '$' + Number(data.total_inflow).toLocaleString();
+                document.getElementById('dosOutflow').innerText = '$' + Number(data.total_outflow).toLocaleString();
+                document.getElementById('dosAlertsCount').innerText = data.flagged_alerts_count;
+
+                var tbody = document.getElementById('dosTxTable');
+                tbody.innerHTML = '';
+                if (!data.recent_transactions || data.recent_transactions.length === 0) {
+                    tbody.innerHTML = '<tr><td colspan="6" class="text-center p-4 text-muted">No transactions recorded for this account.</td></tr>';
+                } else {
+                    data.recent_transactions.forEach(t => {
+                        var row = document.createElement('tr');
+                        row.className = 'hover:bg-cyan-500/5 transition-colors';
+                        row.innerHTML = `
+                            <td class="p-2.5 text-cyan-500 font-semibold">${t.tx_id}</td>
+                            <td class="p-2.5 text-muted">${t.date} ${t.time}</td>
+                            <td class="p-2.5">${t.sender_account.slice(-4)} &rarr; ${t.receiver_account.slice(-4)}</td>
+                            <td class="p-2.5 text-emerald-500 font-bold">$${Number(t.amount).toLocaleString()}</td>
+                            <td class="p-2.5">${t.payment_type}</td>
+                            <td class="p-2.5 text-right text-rose-500 font-bold">${t.risk_score}</td>
+                        `;
+                        tbody.appendChild(row);
+                    });
+                }
+            } catch (err) {
+                console.error(err);
+            }
+        }
+
+        async function searchTransactions() {
+            var query = document.getElementById('txSearchInput')?.value.trim() || '';
+            var tier = document.getElementById('txTierFilter')?.value || 'ALL';
+            
+            try {
+                var res = await fetch(`/api/transactions?search=${query}&risk_tier=${tier}&limit=30`);
+                var data = await res.json();
+                var tbody = document.getElementById('fullTxTable');
+                if (!tbody) return;
+                tbody.innerHTML = '';
+
+                (data.transactions || []).forEach(t => {
+                    var tr = document.createElement('tr');
+                    tr.className = 'hover:bg-cyan-500/5 transition-colors';
+                    var tierBadge = t.risk_tier === 'CRITICAL' ? 'text-rose-500 bg-rose-500/10' : (t.risk_tier === 'HIGH' ? 'text-amber-500 bg-amber-500/10' : 'text-emerald-500 bg-emerald-500/10');
+                    tr.innerHTML = `
+                        <td class="p-3 font-semibold">${t.tx_id}</td>
+                        <td class="p-3 text-muted">${t.date} ${t.time}</td>
+                        <td class="p-3">${t.sender_account} &rarr; ${t.receiver_account}</td>
+                        <td class="p-3 text-emerald-500 font-bold">$${Number(t.amount).toLocaleString()}</td>
+                        <td class="p-3 text-muted">${t.sender_bank_location} &rarr; ${t.receiver_bank_location}</td>
+                        <td class="p-3">${t.payment_type}</td>
+                        <td class="p-3"><span class="px-2 py-0.5 rounded ${tierBadge} text-[10px] font-bold">${t.risk_tier}</span></td>
+                        <td class="p-3 text-right font-bold text-cyan-500">${t.risk_score}</td>
+                    `;
+                    tbody.appendChild(tr);
+                });
+            } catch (err) {
+                console.error(err);
+            }
+        }
+
+        // ================= SQL QUERY STUDIO FUNCTIONS =================
+
+        async function loadSQLSchema() {
+            var container = document.getElementById('sqlSchemaList');
+            if (!container) return;
+            try {
+                var res = await fetch('/api/sql/schema');
+                if (!res.ok) return;
+                var data = await res.json();
+                container.innerHTML = '';
+
+                for (var [tbl, info] of Object.entries(data.tables || {})) {
+                    var div = document.createElement('div');
+                    div.className = 'p-2.5 rounded-xl bg-subtle border border-theme hover:border-purple-500/40 cursor-pointer transition-colors';
+                    div.setAttribute('data-table', tbl);
+                    div.onclick = (function(t){ return function(){ insertSQLTable(t); }; })(tbl);
+                    div.innerHTML = `
+                        <div class="flex items-center justify-between font-bold text-purple-400">
+                            <span>📄 ${tbl}</span>
+                            <span class="text-[10px] text-muted font-normal">${Number(info.total_records).toLocaleString()} rows</span>
+                        </div>
+                        <div class="text-[10px] text-muted truncate mt-0.5">${info.columns.map(function(c){ return c.name; }).slice(0, 5).join(', ')}...</div>
+                    `;
+                    container.appendChild(div);
+                }
+            } catch (err) {
+                console.error(err);
+            }
+        }
+
+        function insertSQLTable(tbl) {
+            var input = document.getElementById('sqlInput');
+            if (input) {
+                input.value = `SELECT * FROM ${tbl} LIMIT 50;`;
+                runSQLQuery();
+            }
+        }
+
+        function loadSQLPreset(preset) {
+            var input = document.getElementById('sqlInput');
+            if (!input) return;
+            if (preset === 'structuring') {
+                input.value = `SELECT tx_id, date, time, sender_account, receiver_account, amount, payment_type, risk_score, risk_tier, rule_violations\nFROM transactions\nWHERE amount >= 8500 AND amount < 10000\nORDER BY amount DESC\nLIMIT 50;`;
+            } else if (preset === 'jurisdictions') {
+                input.value = `SELECT sender_bank_location, receiver_bank_location, COUNT(*) as tx_count, ROUND(SUM(amount), 2) as total_volume, ROUND(AVG(risk_score), 1) as avg_risk\nFROM transactions\nWHERE risk_score >= 50.0\nGROUP BY sender_bank_location, receiver_bank_location\nORDER BY tx_count DESC\nLIMIT 20;`;
+            } else if (preset === 'critical_alerts') {
+                input.value = `SELECT alert_id, tx_id, sender_account, receiver_account, amount, alert_type, severity, risk_score, status\nFROM alerts\nWHERE severity = 'CRITICAL' AND status = 'NEW'\nORDER BY risk_score DESC\nLIMIT 50;`;
+            } else if (preset === 'top_accounts') {
+                input.value = `SELECT sender_account, COUNT(*) as total_transfers, ROUND(SUM(amount), 2) as total_outflow, ROUND(AVG(risk_score), 1) as avg_risk\nFROM transactions\nGROUP BY sender_account\nORDER BY total_outflow DESC\nLIMIT 20;`;
+            } else if (preset === 'schemas') {
+                input.value = `SELECT name, sql FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%';`;
+            }
+            runSQLQuery();
+        }
+
+        function handleSQLKeyDown(e) {
+            if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') {
+                e.preventDefault();
+                runSQLQuery();
+            }
+        }
+
+        function clearSQLEditor() {
+            var input = document.getElementById('sqlInput');
+            if (input) {
+                input.value = '';
+                input.focus();
+            }
+        }
+
+        async function runSQLQuery() {
+            var query = document.getElementById('sqlInput')?.value.trim();
+            if (!query) return;
+
+            var btn = document.getElementById('runSqlBtn');
+            var badge = document.getElementById('sqlExecutionBadge');
+            var errBox = document.getElementById('sqlErrorBox');
+            var exportBtn = document.getElementById('exportSqlBtn');
+            var rowCountEl = document.getElementById('sqlRowCount');
+
+            if (btn) btn.classList.add('opacity-75');
+            if (badge) badge.innerText = 'Executing query...';
+            if (errBox) errBox.classList.add('hidden');
+
+            try {
+                var res = await fetch('/api/sql/execute', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ query: query, limit: 500 })
+                });
+                var data = await res.json();
+                lastSQLResultData = data;
+
+                if (data.status === 'error') {
+                    if (errBox) {
+                        errBox.innerText = 'SQL Execution Error: ' + data.error_message;
+                        errBox.classList.remove('hidden');
+                    }
+                    if (badge) badge.innerText = `Error (${data.execution_time_ms} ms)`;
+                    if (rowCountEl) rowCountEl.innerText = '0 rows';
+                    if (exportBtn) exportBtn.classList.add('hidden');
+                    return;
+                }
+
+                if (badge) badge.innerText = `⚡ ${data.execution_time_ms} ms • ${data.type}`;
+
+                if (data.type === 'SELECT') {
+                    if (rowCountEl) rowCountEl.innerText = `${data.row_count} of ${data.total_matching} rows`;
+                    renderSQLResultsTable(data.columns, data.rows);
+                    if (exportBtn) {
+                        if (data.rows.length > 0) exportBtn.classList.remove('hidden');
+                        else exportBtn.classList.add('hidden');
+                    }
+                } else {
+                    if (rowCountEl) rowCountEl.innerText = `${data.affected_rows} rows affected`;
+                    renderSQLResultsTable(['Execution Status', 'Affected Rows'], [[data.message, data.affected_rows]]);
+                    if (exportBtn) exportBtn.classList.add('hidden');
+                    refreshData();
+                }
+            } catch (err) {
+                if (errBox) {
+                    errBox.innerText = 'Network error executing SQL query: ' + err.message;
+                    errBox.classList.remove('hidden');
+                }
+            } finally {
+                if (btn) btn.classList.remove('opacity-75');
+            }
+        }
+
+        function renderSQLResultsTable(columns, rows) {
+            var thead = document.querySelector('#sqlResultsTable thead');
+            var tbody = document.getElementById('sqlResultsBody');
+            if (!thead || !tbody) return;
+
+            var headerHtml = '<tr>';
+            columns.forEach(function(col) {
+                headerHtml += `<th class="p-3 text-purple-400 font-bold whitespace-nowrap">${col}</th>`;
+            });
+            headerHtml += '</tr>';
+            thead.innerHTML = headerHtml;
+
+            if (!rows || rows.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="${columns.length}" class="p-4 text-center text-muted">Query executed successfully (0 rows returned).</td></tr>`;
+                return;
+            }
+
+            var bodyHtml = '';
+            rows.forEach(function(row) {
+                bodyHtml += '<tr class="hover:bg-purple-500/5 transition-colors">';
+                row.forEach(function(cell) {
+                    var displayVal = cell === null ? '<span class="text-muted italic">NULL</span>' : cell;
+                    bodyHtml += `<td class="p-2.5 whitespace-nowrap text-xs max-w-xs truncate">${displayVal}</td>`;
+                });
+                bodyHtml += '</tr>';
+            });
+            tbody.innerHTML = bodyHtml;
+        }
+
+        function exportSQLResultsCSV() {
+            if (!lastSQLResultData || !lastSQLResultData.rows || lastSQLResultData.rows.length === 0) return;
+
+            var cols = lastSQLResultData.columns;
+            var rows = lastSQLResultData.rows;
+
+            var csvContent = "data:text/csv;charset=utf-8," + [
+                cols.join(','),
+                rows.map(function(r) {
+                    return r.map(function(c) {
+                        return `"${String(c).replace(/"/g, '""')}"`;
+                    }).join(',');
+                }).join('\n')
+            ].join('\n');
+
+            var encodedUri = encodeURI(csvContent);
+            var link = document.createElement("a");
+            link.setAttribute("href", encodedUri);
+            link.setAttribute("download", `aml_sql_export_${Date.now()}.csv`);
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+        }
+
+        function loadScenario(type) {
+            if (type === 'structuring') {
+                document.getElementById('t_amount').value = 9850.00;
+                document.getElementById('t_payment_type').value = 'Cash Deposit';
+                document.getElementById('t_sender_loc').value = 'US';
+                document.getElementById('t_receiver_loc').value = 'US';
+            } else if (type === 'panama') {
+                document.getElementById('t_amount').value = 85000.00;
+                document.getElementById('t_payment_type').value = 'Wire Transfer';
+                document.getElementById('t_sender_loc').value = 'US';
+                document.getElementById('t_receiver_loc').value = 'Panama';
+            } else if (type === 'pass_through') {
+                document.getElementById('t_amount').value = 55000.00;
+                document.getElementById('t_payment_type').value = 'Cross-border';
+                document.getElementById('t_sender_loc').value = 'UK';
+                document.getElementById('t_receiver_loc').value = 'Cayman Islands';
+            } else if (type === 'normal') {
+                document.getElementById('t_amount').value = 350.00;
+                document.getElementById('t_payment_type').value = 'Credit Card';
+                document.getElementById('t_sender_loc').value = 'US';
+                document.getElementById('t_receiver_loc').value = 'US';
+            }
+            document.getElementById('txTestForm').dispatchEvent(new Event('submit'));
+        }
+
+        async function testTransaction(e) {
+            if (e) e.preventDefault();
+            var payload = {
+                amount: parseFloat(document.getElementById('t_amount').value),
+                sender_account: document.getElementById('t_sender').value,
+                receiver_account: document.getElementById('t_receiver').value,
+                sender_bank_location: document.getElementById('t_sender_loc').value,
+                receiver_bank_location: document.getElementById('t_receiver_loc').value,
+                payment_type: document.getElementById('t_payment_type').value
+            };
+
+            var res = await fetch('/api/predict', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload)
+            });
+            var data = await res.json();
+            var evalRes = data.evaluation;
+
+            document.getElementById('resScore').innerText = evalRes.risk_score;
+            document.getElementById('resRuleScore').innerText = evalRes.rule_score + '/100';
+            document.getElementById('resMLScore').innerText = evalRes.ml_confidence + '%';
+            
+            var badge = document.getElementById('resTierBadge');
+            badge.innerText = evalRes.risk_tier + ' RISK';
+            badge.className = `inline-block px-3 py-1 text-xs font-bold rounded-full ${evalRes.risk_tier === 'CRITICAL' ? 'bg-rose-500/20 text-rose-500' : (evalRes.risk_tier === 'HIGH' ? 'bg-amber-500/20 text-amber-500' : 'bg-emerald-500/20 text-emerald-500')}`;
+
+            var ul = document.getElementById('resReasons');
+            ul.innerHTML = '';
+            evalRes.explanation_reasons.forEach(r => {
+                var li = document.createElement('li');
+                li.innerText = r;
+                ul.appendChild(li);
+            });
+        }
+
+        async function loadModelMetrics() {
+            try {
+                var res = await fetch('/api/model/metrics');
+                var metrics = await res.json();
+                var imps = metrics.feature_importances || {};
+                
+                var labels = Object.keys(imps).slice(0, 10);
+                var values = Object.values(imps).slice(0, 10);
+
+                var isDark = document.documentElement.classList.contains('dark');
+                var textColor = isDark ? '#9ca3af' : '#1e293b';
+                var gridColor = isDark ? '#1f2937' : '#b2c4d8';
+                var barColor = isDark ? '#8b5cf6' : '#7c3aed';
+
+                var ctxFeat = document.getElementById('featureChart').getContext('2d');
+                if (featureChartInstance) featureChartInstance.destroy();
+                featureChartInstance = new Chart(ctxFeat, {
+                    type: 'bar',
+                    data: {
+                        labels: labels,
+                        datasets: [{
+                            label: 'Gini Feature Importance',
+                            data: values,
+                            backgroundColor: barColor,
+                            borderRadius: 6
+                        }]
+                    },
+                    options: {
+                        indexAxis: 'y',
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: { legend: { display: false } },
+                        scales: {
+                            x: { grid: { color: gridColor }, ticks: { color: textColor, font: { size: 10, weight: 'bold' } } },
+                            y: { grid: { display: false }, ticks: { color: textColor, font: { size: 10, weight: 'bold' } } }
+                        }
+                    }
+                });
+            } catch (err) {
+                console.error(err);
+            }
+        }
+
+        function openSarModal(alertId, sender, receiver, amount, typology, risk) {
+            document.getElementById('sar_alert_id').value = alertId;
+            document.getElementById('sar_primary').value = sender;
+            document.getElementById('sar_amount').value = '$' + Number(amount).toLocaleString();
+            document.getElementById('sar_typology').value = typology;
+            document.getElementById('sar_risk_score').value = risk;
+            document.getElementById('sar_narrative').value = `FinCEN SAR Narrative: Suspicious financial pattern matching FATF Typology: ${typology}. Subject Account ${sender} initiated transfers totaling $${Number(amount).toLocaleString()} to Counterparty ${receiver}. Multi-factor risk engine computed composite anomaly score of ${risk}/100. Immediate AML compliance hold and regulator escalation recommended.`;
+            
+            document.getElementById('sarModal').classList.remove('hidden');
+            if (typeof lucide !== 'undefined' && lucide.createIcons) { try { lucide.createIcons(); } catch(e){} }
+        }
+
+        function closeSarModal() {
+            document.getElementById('sarModal').classList.add('hidden');
+        }
+
+        async function submitSarFiling() {
+            var payload = {
+                alert_id: document.getElementById('sar_alert_id').value,
+                primary_account: document.getElementById('sar_primary').value,
+                counterparty_account: '9928174822',
+                suspicious_amount: parseFloat(document.getElementById('sar_amount').value.replace(/[^0-9.]/g, '')),
+                laundering_typology: document.getElementById('sar_typology').value,
+                risk_score: parseFloat(document.getElementById('sar_risk_score').value),
+                narrative: document.getElementById('sar_narrative').value,
+                compliance_officer: 'Senior AML Compliance Officer'
+            };
+
+            await fetch('/api/sar/generate', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload)
+            });
+
+            closeSarModal();
+            loadAlerts();
+            refreshData();
+            alert('SAR Report successfully submitted and filed with FinCEN Regulatory Network!');
+        }
+
+// Global exports for inline HTML onclick handlers
+
+window.switchTab = switchTab;
+window.setTheme = setTheme;
+window.refreshData = refreshData;
+window.loadAlerts = loadAlerts;
+window.triageStatus = triageStatus;
+window.simulateStream = simulateStream;
+window.toggleAutoStream = toggleAutoStream;
+window.renderNetworkForAccount = renderNetworkForAccount;
+window.loadAccountProfile = loadAccountProfile;
+window.loadEntitiesList = loadEntitiesList;
+window.resetEntityPageAndLoad = resetEntityPageAndLoad;
+window.changeEntityPage = changeEntityPage;
+window.exportEntitiesCSV = exportEntitiesCSV;
+window.searchTransactions = searchTransactions;
+window.loadSQLSchema = loadSQLSchema;
+window.insertSQLTable = insertSQLTable;
+window.loadSQLPreset = loadSQLPreset;
+window.handleSQLKeyDown = handleSQLKeyDown;
+window.clearSQLEditor = clearSQLEditor;
+window.runSQLQuery = runSQLQuery;
+window.exportSQLResultsCSV = exportSQLResultsCSV;
+window.loadScenario = loadScenario;
+window.testTransaction = testTransaction;
+window.loadModelMetrics = loadModelMetrics;
+window.openSarModal = openSarModal;
+window.closeSarModal = closeSarModal;
+window.submitSarFiling = submitSarFiling;
+
+setTheme('dark');
+refreshData();
+searchTransactions();
+if (typeof lucide !== 'undefined' && lucide.createIcons) {
+    try { lucide.createIcons(); } catch(e){}
+}
+
+    </script>
+</body>
+</html>

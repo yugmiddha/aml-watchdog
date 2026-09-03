@@ -1,0 +1,18 @@
+version: '3.8'
+
+services:
+  aml-backend:
+    build:
+      context: ..
+      dockerfile: deployment/Dockerfile.backend
+    container_name: aml-compliance-engine
+    ports:
+      - "8000:8000"
+    volumes:
+      - ../database:/app/database
+      - ../models/saved:/app/models/saved
+      - ../data/processed:/app/data/processed
+    environment:
+      - APP_ENV=production
+      - DB_PATH=/app/database/aml_compliance.db
+    restart: unless-stopped
