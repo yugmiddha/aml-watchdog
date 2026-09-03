@@ -1,30 +1,55 @@
-﻿import os
+import os
 import json
-import joblib
+import math
 import numpy as np
 import pandas as pd
 from typing import Dict, Any, List
 
 MODEL_DIR = os.path.join(os.path.dirname(__file__), 'saved')
 MODEL_PATH = os.path.join(MODEL_DIR, 'aml_xgb_model.joblib')
+JSON_MODEL_PATH = os.path.join(MODEL_DIR, 'aml_xgb_model.json')
 FEATURE_COLS_PATH = os.path.join(MODEL_DIR, 'feature_columns.json')
 HIGH_RISK_JURISDICTIONS = {'Panama', 'Cayman Islands', 'Cyprus', 'UAE', 'Bahamas', 'Seychelles', 'Bermuda', 'British Virgin Islands'}
 
 class AMLModelDetector:
     def __init__(self):
         self.model = None
+        self.trees = []
+        self.base_score = 0.5
         self.feature_cols = []
         self.load_model()
         
     def load_model(self):
-        if os.path.exists(MODEL_PATH) and os.path.exists(FEATURE_COLS_PATH):
+        if os.path.exists(FEATURE_COLS_PATH):
             try:
-                self.model = joblib.load(MODEL_PATH)
                 with open(FEATURE_COLS_PATH, 'r') as f:
                     self.feature_cols = json.load(f)
-                print(f"[+] Loaded AML XGBoost Model ({len(self.feature_cols)} features).")
             except Exception as e:
-                print(f"[!] Warning loading model: {e}")
+                print(f"[!] Warning reading feature columns: {e}")
+
+        # 1. Try loading pure JSON tree structure (Fastest & Zero Heavy Dependencies)
+        if os.path.exists(JSON_MODEL_PATH):
+            try:
+                with open(JSON_MODEL_PATH, 'r') as f:
+                    m_data = json.load(f)
+                self.trees = m_data.get('learner', {}).get('gradient_booster', {}).get('model', {}).get('trees', [])
+                try:
+                    self.base_score = float(m_data['learner']['learner_model_param']['base_score'])
+                except Exception:
+                    self.base_score = 0.5
+                print(f"[+] Loaded AML XGBoost Pure-Python Model ({len(self.trees)} trees, {len(self.feature_cols)} features).")
+                return
+            except Exception as e:
+                print(f"[!] Note on JSON model load: {e}")
+
+        # 2. Fallback to Joblib if installed
+        if os.path.exists(MODEL_PATH):
+            try:
+                import joblib
+                self.model = joblib.load(MODEL_PATH)
+                print(f"[+] Loaded AML XGBoost Model via Joblib ({len(self.feature_cols)} features).")
+            except Exception as e:
+                print(f"[!] Warning loading joblib model: {e}")
                 self.model = None
                 
     def extract_features(self, tx: Dict[str, Any], context: Dict[str, Any] = None) -> pd.DataFrame:
@@ -89,24 +114,55 @@ class AMLModelDetector:
         return df_feat[self.feature_cols]
 
     def predict(self, tx: Dict[str, Any], context: Dict[str, Any] = None) -> Dict[str, Any]:
-        if self.model is None:
+        if not self.trees and self.model is None:
             self.load_model()
             
-        if self.model is None:
-            amt = float(tx.get('amount', 0.0))
-            is_struct = 1.0 if 8500 <= amt < 10000 else 0.0
-            is_cross = 1.0 if tx.get('sender_bank_location') != tx.get('receiver_bank_location') else 0.0
-            prob = min(0.98, (is_struct * 0.75) + (is_cross * 0.20) + (0.15 if amt > 50000 else 0.02))
-            return {'ml_probability': round(prob, 4), 'ml_predicted_class': int(prob >= 0.5), 'confidence': round(prob * 100, 2)}
-            
-        X = self.extract_features(tx, context)
-        prob = float(self.model.predict_proba(X)[0, 1])
-        pred_class = int(prob >= 0.5)
+        feat_df = self.extract_features(tx, context)
         
-        return {
-            'ml_probability': round(prob, 4),
-            'ml_predicted_class': pred_class,
-            'confidence': round(prob * 100, 2)
-        }
+        # Pure JSON tree ensemble evaluation (Zero external ML binary dependency)
+        if self.trees:
+            feat_dict = feat_df.iloc[0].to_dict()
+            margin = 0.0
+            for tree in self.trees:
+                node = 0
+                lefts = tree['left_children']
+                rights = tree['right_children']
+                splits = tree['split_indices']
+                thresholds = tree['split_conditions']
+                weights = tree['base_weights']
+                
+                while lefts[node] != -1:
+                    f_idx = splits[node]
+                    f_name = self.feature_cols[f_idx] if f_idx < len(self.feature_cols) else ''
+                    f_val = feat_dict.get(f_name, 0.0)
+                    if f_val < thresholds[node]:
+                        node = lefts[node]
+                    else:
+                        node = rights[node]
+                margin += weights[node]
+                
+            prob = 1.0 / (1.0 + math.exp(-margin))
+            prob = min(0.9999, max(0.0001, prob))
+            pred_class = int(prob >= 0.5)
+            return {
+                'ml_probability': round(prob, 4),
+                'ml_predicted_class': pred_class,
+                'confidence': round(prob * 100, 2)
+            }
+            
+        if self.model is not None:
+            prob = float(self.model.predict_proba(feat_df)[0, 1])
+            pred_class = int(prob >= 0.5)
+            return {
+                'ml_probability': round(prob, 4),
+                'ml_predicted_class': pred_class,
+                'confidence': round(prob * 100, 2)
+            }
+            
+        amt = float(tx.get('amount', 0.0))
+        is_struct = 1.0 if 8500 <= amt < 10000 else 0.0
+        is_cross = 1.0 if tx.get('sender_bank_location') != tx.get('receiver_bank_location') else 0.0
+        prob = min(0.98, (is_struct * 0.75) + (is_cross * 0.20) + (0.15 if amt > 50000 else 0.02))
+        return {'ml_probability': round(prob, 4), 'ml_predicted_class': int(prob >= 0.5), 'confidence': round(prob * 100, 2)}
 
 detector = AMLModelDetector()
